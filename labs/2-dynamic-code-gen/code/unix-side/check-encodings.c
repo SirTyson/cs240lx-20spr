@@ -13,8 +13,18 @@
  *  4. returns pointer to it.
  */
 uint32_t *insts_emit(unsigned *nbytes, char *insts) {
-    // check libunix.h --- create_file, write_exact, run_system, read_file.
-    unimplemented();
+    int file = create_file("temp.out");
+    char buf[strlen(insts) + 2];
+    strcpy(buf, insts);
+    buf[strlen(insts)] = '\n';
+    buf[strlen(insts) + 1] = '\0';
+    write_exact(file, buf, strlen(buf));
+    char *com = "arm-none-eabi-as --warn --fatal-warnings --traditional-format -mcpu=arm1176jzf-s -march=armv6zk temp.out -o temp.o && arm-none-eabi-objdump -EB -d -j .text temp.o | grep '[0-9a-f]:'| cut -d ':' -f2 | cut -d '\t' -f2 | xxd -r -p > temp";
+    run_system(com);
+    close(file);
+    remove("temp.out");
+    remove("temp.o");
+    return read_file(nbytes, "temp");
 }
 
 /*

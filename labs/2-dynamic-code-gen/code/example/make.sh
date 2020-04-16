@@ -5,4 +5,5 @@ arm-none-eabi-objdump -d add.elf
 
 
 arm-none-eabi-as --warn --fatal-warnings -mcpu=arm1176jzf-s -march=armv6zk add-asm.s -o add-asm.o
+
 arm-none-eabi-objdump -d add-asm.o 
