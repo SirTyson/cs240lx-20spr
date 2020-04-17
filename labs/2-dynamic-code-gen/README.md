@@ -61,6 +61,13 @@ simple, but it gives you a feel for how the more general tricks are played:
 Congratulations, you have the `hello world` version of a bunch of neat
 tricks.  We will build these out more next lab and use them.
 
+### Part 0: add executable headers in a backwards compatible way.
+
+Even a the ability to stick a tiny bit of executable code in a random
+place can give you a nice way to solve problems.  As you might recall,
+in cs140e, whenever we wanted to add a header to our pi binaries, we
+had to hack
+
 ### Part 1: write a `hello world`
 
 Generate a routine to call `printk("hello world\n")` and return.
@@ -75,13 +82,25 @@ Note: to help figure things out, you should:
      values you get from disassembly to make sure everything is working
      as you expect.
 
-### Part 0: add executable headers in a backwards compatible way.
 
-[Yes, I know this is out of order]
+You probably want to check your code using something like:
 
-Even a the ability to stick a tiny bit of executable code in a random
-place can give you a nice way to solve problems.  As you might recall,
-in cs140e, whenever 
+    check_one_inst("b label; label: ", arm_b(0,4));
+    check_one_inst("bl label; label: ", arm_bl(0,4));
+    check_one_inst("label: b label; ", arm_b(0,0));
+    check_one_inst("label: bl label; ", arm_bl(0,0));
+    check_one_inst("ldr r0, [pc,#0]", arm_ldr(arm_r0, arm_r15, 0));
+    check_one_inst("ldr r0, [pc,#256]", arm_ldr(arm_r0, arm_r15, 256));
+    check_one_inst("ldr r0, [pc,#-256]", arm_ldr(arm_r0, arm_r15, -256));
+
+
+Where my routines are:
+
+    // <src_addr> is where the call is and <target_addr> is where you want
+    // to go.
+    inline uint32_t arm_b(uint32_t src_addr, uint32_t target_addr);
+    inline uint32_t arm_bl(uint32_t src_addr, uint32_t target_addr);
+
 
 ### Part 3: make an interrupt dispatch compiler.
 
