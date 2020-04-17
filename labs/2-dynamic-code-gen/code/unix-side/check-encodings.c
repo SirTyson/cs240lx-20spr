@@ -35,8 +35,19 @@ uint32_t *insts_emit(unsigned *nbytes, char *insts) {
  *  3. prints out a useful error message if it did not succeed!!
  */
 void insts_check(char *insts, uint32_t *code, unsigned nbytes) {
-    // make sure you print out something useful on mismatch!
-    unimplemented();
+    unsigned new_bytes;
+    uint32_t *new = insts_emit(&new_bytes, insts);
+    if (new_bytes != nbytes) {
+      panic("Error: ASSEMBLER CROSS CHECK FAILED");
+      return;
+    }
+
+    for (unsigned cur = 0; 4 * cur < nbytes; cur++) {
+      if (new[cur] != code[cur]) {
+        panic("Error: ASSEMBLER CROSS CHECK FAILED");
+        return;
+      }
+    }
 }
 
 // check a single instruction.
@@ -94,11 +105,13 @@ void derive_op_rrr(const char *name, const char *opcode,
     assert(d && s1 && s2);
 
     unsigned d_off = 0, src1_off = 0, src2_off = 0, op = ~0;
-
+    unsigned dstMin, dstMax, src1Min, src1Max, src2Min, src2Max;
     uint32_t always_0 = ~0, always_1 = ~0;
 
     // compute any bits that changed as we vary d.
-    for(unsigned i = 0; dst[i]; i++) {
+    unsigned i;
+    for(i = 0; dst[i]; i++) {
+        
         uint32_t u = emit_rrr(opcode, dst[i], s1, s2);
 
         // if a bit is always 0 then it will be 1 in always_0
@@ -108,7 +121,27 @@ void derive_op_rrr(const char *name, const char *opcode,
         always_1 &= u;
     }
 
-    if(always_0 & always_1) 
+    unsigned dstMaxi = i;
+
+    uint32_t s1_0 = ~0, s1_1 = ~0;
+    for (i = 0; src1[i]; i++) {
+        uint32_t u = emit_rrr(opcode, d, src1[i], s2); 
+        s1_0 &= ~u;
+        s1_1 &= u;
+    }
+
+    unsigned src1Maxi = i;
+
+    uint32_t s2_0 = ~0, s2_1 = ~0;
+    for (i = 0; src2[i]; i++) {
+        uint32_t u = emit_rrr(opcode, d, s1, src2[i]); 
+        s2_0 &= ~u;
+        s2_1 &= u;
+    }
+
+    unsigned src2Maxi = i;
+
+    if(always_0 & always_1 || s1_0 & s1_1 || s2_0 & s1_1) 
         panic("impossible overlap: always_0 = %x, always_1 %x\n", 
             always_0, always_1);
 
@@ -117,22 +150,34 @@ void derive_op_rrr(const char *name, const char *opcode,
     // bits that changed: these are the register bits.
     uint32_t changed = ~never_changed;
 
+    uint32_t s1_never_changed = s1_0 | s1_1;
+    uint32_t s2_never_changed = s2_0 | s2_1;
+    uint32_t s1_changed = ~s1_never_changed;
+    uint32_t s2_changed = ~s2_never_changed;
+
     output("register dst are bits set in: %x\n", changed);
 
     // find the offset.  we assume register bits are contig and within 0xf
-    d_off = ffs(changed);
-    
+    d_off = ffs(changed) - 1;
+    src1_off = ffs(s1_changed) - 1;
+    src2_off = ffs(s2_changed) - 1;
+
     // check that bits are contig and at most 4 bits are set.
     if(((changed >> d_off) & ~0xf) != 0)
         panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
     // refine the opcode.
-    op &= never_changed;
+    op = emit_rrr(opcode, d, s1, s2);
+    op &= never_changed & s1_never_changed & s2_never_changed;
     output("opcode is in =%x\n", op);
 
     // emit: NOTE: obviously, currently <src1_off>, <src2_off> are not 
     // defined (so solve for them) and opcode needs to be refined more.
     output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-    output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
+    /*output("    if (dst < %d || dst > %d || src1 < %d || src1 > %d || src2 < %d || src2 > %d) panic(\"INVALID INSTRUCTION\");\n",
+                dstMin, dstMax,
+                src1Min, src1Max,
+                src2Min, src2Max); */
+    output("    return 0x%x | (dst << %d) | (src1 << %d) | (src2 << %d);\n",
                 op,
                 d_off,
                 src1_off,
