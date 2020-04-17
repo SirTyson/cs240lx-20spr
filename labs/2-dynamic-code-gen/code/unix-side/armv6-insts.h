@@ -88,16 +88,6 @@ _Static_assert(arm_mvn_op == 0b1111, "bad num list");
 //  - shift operatnd: page A5-8 [armv6.pdf]
 //
 // we do not do any carries, so S = 0.
-/*static inline unsigned arm_add(uint8_t rd, uint8_t rs1, uint8_t rs2) {
-    assert(arm_add_op == 0b0100);
-    unsigned op = 0;
-    op |= arm_AL << 28;
-    op |= arm_add_op << 21;
-    op |= rs1 << 16;
-    op |= rd << 12;
-    op |= rs2;
-    return op;
-}*/
 static int arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
     return 0xe0800000 | (dst << 12) | (src1 << 16) | (src2 << 0);
 }
@@ -105,17 +95,17 @@ static int arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
 
 // <add> of an immediate
 static inline uint32_t arm_add_imm8(uint8_t rd, uint8_t rs1, uint8_t imm) {
-    unimplemented();
+    return 0xe2800000 | (rd << 12) | (rs1 << 16) | imm;
 }
 
 static inline uint32_t arm_bx(uint8_t reg) {
-    unimplemented();
+    return 0xe12fff10 | reg;
 }
 
 // load an or immediate and rotate it.
 static inline uint32_t 
 arm_or_imm_rot(uint8_t rd, uint8_t rs1, uint8_t imm8, uint8_t rot_nbits) {
-    unimplemented();
+    return 0xe2800000 | (rd << 12) | (rs1 << 16) | (rot_nbits << 8) | imm8;
 }
 
 #endif

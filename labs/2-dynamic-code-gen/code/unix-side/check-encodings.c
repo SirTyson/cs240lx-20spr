@@ -255,6 +255,16 @@ int main(void) {
     derive_op_rrr("arm_add", "add", all_regs,all_regs,all_regs);
     output("did something: now use the generated code in the checks above!\n");
 
+    check_one_inst("add r6, r7, #123", arm_add_imm8(arm_r6, arm_r7, 123));
+    check_one_inst("add r9, r10, #1", arm_add_imm8(arm_r9, arm_r10, 1));
+    check_one_inst("add r12, r13, #10", arm_add_imm8(arm_r12, arm_r13, 10));
+    check_one_inst("add r15, r7, #89", arm_add_imm8(arm_r15, arm_r7, 89));
+   
+    check_one_inst("bx r10", arm_bx(arm_r10)); 
+    check_one_inst("bx r0", arm_bx(arm_r0)); 
+    check_one_inst("bx r5", arm_bx(arm_r5)); 
+    check_one_inst("bx r8", arm_bx(arm_r8));
+
     // get encodings for other instructions, loads, stores, branches, etc.
     return 0;
 }
