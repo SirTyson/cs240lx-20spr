@@ -61,12 +61,6 @@ simple, but it gives you a feel for how the more general tricks are played:
 Congratulations, you have the `hello world` version of a bunch of neat
 tricks.  We will build these out more next lab and use them.
 
-### Part 0: add executable headers in a backwards compatible way.
-
-Even a the ability to stick a tiny bit of executable code in a random
-place can give you a nice way to solve problems.  As you might recall,
-in cs140e, whenever we wanted to add a header to our pi binaries, we
-had to hack
 
 ### Part 1: write a `hello world`
 
@@ -82,7 +76,6 @@ Note: to help figure things out, you should:
      values you get from disassembly to make sure everything is working
      as you expect.
 
-
 You probably want to check your code using something like:
 
     check_one_inst("b label; label: ", arm_b(0,4));
@@ -93,7 +86,6 @@ You probably want to check your code using something like:
     check_one_inst("ldr r0, [pc,#256]", arm_ldr(arm_r0, arm_r15, 256));
     check_one_inst("ldr r0, [pc,#-256]", arm_ldr(arm_r0, arm_r15, -256));
 
-
 Where my routines are:
 
     // <src_addr> is where the call is and <target_addr> is where you want
@@ -101,12 +93,93 @@ Where my routines are:
     inline uint32_t arm_b(uint32_t src_addr, uint32_t target_addr);
     inline uint32_t arm_bl(uint32_t src_addr, uint32_t target_addr);
 
+### Part 2: add executable headers in a backwards compatible way.
+
+Even the ability to stick a tiny bit of executable code in a random
+place can give you a nice way to solve problems.  For this part, we
+use it to solve a nagging problem we had from `cs140e`.
+
+As you might recall, whenever we wanted to add a header to our pi
+binaries, we had to hack on the pi-side bootloader code and sometimes
+the unix-side code.  Which was annoying.
+
+However, with a simple hack we could have avoided all of this:  if you have
+a header for (say) 64 bytes then:
+   1. As the first word in the header (which is the first word of the pi binary), 
+      put the 32-bit value for a ARMv6 branch (`b`) instruction that jumps 
+      over the header.
+   2. Add whatever other stuff you want to the header in the other
+      60 bytes:
+      make sure you don't add more than 64-bytes and that you pad up to
+      64 bytes if you do less.
+
+   3. When you run the code, it should work with the old bootloader.
+      
+      It's neat that the ability to write a single jump instruction
+      gives you the ability to add an arbitrary header to code and have
+      it work transparently in a backwards-compatible way.
+
+More detailed:
+   1. Write a new linker script that modifies `./memmap`  to have a header
+      etc.  You should store the string `hello` with a 0 as the first 6 bytes of the 
+      after the jump instruction.
+   2. Modify `hello.c` to set a pointer to where this string will be in
+      memory.  The code should run and print it.
+   3. For some quick examples of things you can do in these scripts you may
+      want to look at the `memmap.header` linker script from our fuse lab,
+      which has example operations that might be useful.  The linker script
+      language is pretty bad, so if you get confused, it's their fault, not
+      yours --- keep going, try google, etc.     We don't need much for this
+      lab's script, so it shouldn't be too bad.
+   4. To debug, definitely look at the `hello.list` to see what is going on.
 
 ### Part 3: make an interrupt dispatch compiler.
 
-You will
-  1. Generate the raw calls to a vector of interrupt routines.
-  2. Write timing code to see what the speedup is, with and without
-     caching.  (Careful!!!)
-  3. Write "threading" code that will jump directly from one routine
-     to another.
+We now do a small, but useful OS-specific hack.  In "real" OSes you
+often have an array holding interrupt handlers to call when you get an interrupt.
+This lets you dynamically register new handlers, but adds extra overhead
+of traversing the array and doing (likely mis-predicted) indirect
+function calls.  If you are trying to make very low-latency interrupts
+--- as we will need when we start doing trap-based code monitoring ---
+then it would be nice to get rid of this overhead.
+
+We will use dynamic code generation to do so.  You should write an
+`int_compile` routine that, given a vector of handlers, generates a
+single trampoline routine that does hard-coded calls to each of these
+in turn.  This will involve:
+  1. Saving and restoring the `lr` and doing `bl` as you did in the 
+     `hello` example.
+  2. As a hack, you pop the `lr` before the last call and do a
+     `b` to the last routine rather than a `bl`.
+
+#### Advanced: jump threading 
+
+To make it even faster you can do "jump threading" where instead of the
+interrupt routines returning back into the trampoline, they directly
+jump to the next one.  For today, we will do this in a very sleazy way,
+using self-modifying code.
+
+Assume we want to call:
+
+    int0();
+    int1();
+    int2();
+
+We:
+   1. Iterate over the instructions in `int0` until we find a `bx lr`.
+   2. Compute the `b` instruction we would do to jump from that location
+      in the code to `int1`.
+   3. Overwrite `int0``s `bx lr` with that value.
+   4. Do a similar process for `int1`.
+   5. Leave `int2` as-is.   
+
+Now, some issues:
+  1. We can no longer call `int0`, `int1` and `int2`  because we've modified
+     the executable and they now behave differently.
+  2. The code might have have multiple `bx lr` calls or might have data
+     in it that looked like it when it should not have.
+  3. If we use the instruction cache, we better make sure to flush it or at 
+     least the address range of the code.
+
+There are hacks to get around (1) and (2) but for expediency we just
+declare success, at least for this lab.
