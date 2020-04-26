@@ -4,7 +4,7 @@
 # ah: for test, doesn't work for us b/c we don't have the code...
 #
 # also it is tricky if they swap with our code and their code.
-SUBDIRS= 
+SUBDIRS=  scope test-gen
 
 .PHONY: all check clean
 all check clean: $(SUBDIRS)
@@ -18,6 +18,9 @@ clean: TARGET=clean
 # recursive call to make
 $(SUBDIRS): force
 	$(MAKE) -s -C $@ $(TARGET)
+run:
+	pi-install /dev/ttyUSB1 ./scope/scope.bin
+	pi-install /dev/ttyUSB0 ./test-gen/test-gen.bin
 
 clean:
 	rm -f *~ *.bak

@@ -31,6 +31,7 @@ void run_system(const char *fmt, ...) {
     int res;
     if((res = system(buf)) != 0)
         panic("system <%s> failed with %d\n", buf, res);
+    
 
     // not sure if we should have a verbose version?
     // debug("SUCCESS: child is done running <%s>!\n", buf);

@@ -7,6 +7,15 @@
 #include "armv6-insts.h"
 
 /*
+ * arm-none-eabi-gcc -Og -Wall -nostdlib -nostartfiles -ffreestanding -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -std=gnu99 -I/home/engler/class/cs140e-20win/libpi -I. -I/home/engler/class/cs140e-20win/libpi/cs140e-src -I/home/engler/class/cs140e-20win/libpi/cs140e-interrupt -ggdb -Wno-pointer-sign -Wno-unused-function -Wno-unused-variable -c jit-code.c -o jit-code.o
+arm-none-eabi-ld /home/engler/class/cs140e-20win/libpi/cs140e-start.o jit-code.o -T /home/engler/class/cs140e-20win/libpi/memmap -o jit-code.elf /home/engler/class/cs140e-20win/libpi/libpi.a
+arm-none-eabi-objdump -D jit-code.elf > jit-code.list
+arm-none-eabi-objcopy jit-code.elf -O binary jit-code.bin
+ */
+
+
+
+/*
  *  1. emits <insts> into a temporary file.
  *  2. compiles it.
  *  3. reads back in.

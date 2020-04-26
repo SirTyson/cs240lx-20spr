@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${CS140E_PATH}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x86",
+            "compilerArgs": [
+                "-Wno-unused-function",
+                "-Wno-unused-variable "
+            ]
+        }
+    ],
+    "version": 4
+}

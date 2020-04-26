@@ -18,6 +18,9 @@ clean: TARGET=clean
 # recursive call to make
 $(SUBDIRS): force
 	$(MAKE) -s -C $@ $(TARGET)
+run:
+	pi-install /dev/ttyUSB1 ./scope/scope.bin
+	pi-install /dev/ttyUSB0 ./test-gen/test-gen.bin
 
 clean:
 	rm -f *~ *.bak

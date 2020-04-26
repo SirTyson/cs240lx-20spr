@@ -8,8 +8,11 @@
 // send N samples at <ncycle> cycles each in a simple way.
 void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
     unsigned start = cycle_cnt_read();
-
-    unimplemented();
+    unsigned v = 1;
+    for (unsigned i = 0; i < N; i++) {
+        write_cyc_until(pin, v, cycle_cnt_read(), CYCLE_PER_FLIP);
+        v ^= 1;
+    }
 
     unsigned end = cycle_cnt_read();
 

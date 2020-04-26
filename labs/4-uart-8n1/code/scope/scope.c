@@ -3,6 +3,7 @@
 #include "cs140e-src/cycle-count.h"
 #include "cs140e-src/cycle-util.h"
 #include "../scope-constants.h"
+#include "../sw-uart.h"
 
 // dumb log.  use your own if you like!
 typedef struct {
@@ -26,7 +27,7 @@ unsigned cycles_per_sec(unsigned s) {
 unsigned 
 scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
     unsigned n = 0;
-    unsigned v = gpio_read(pin) ^ 1;
+    unsigned v = !gpio_read(pin);
     wait_until_cyc(pin, v, 0, (unsigned) -1);
     for (; n < n_max; n++) {
         unsigned start = cycle_cnt_read();
@@ -59,17 +60,37 @@ void dump_samples(log_ent_t *l, unsigned n, unsigned period) {
     }
 }
 
-void notmain(void) {
-    int pin = 21;
-    gpio_set_input(pin);
+void
+client (void)
+{
+    gpio_set_input (IN_0);
+    gpio_set_output (OUT_0);
+    sw_uart_t uart;
+    sw_uart_init (&uart, OUT_0, IN_0, BAUD_RATE, cycles_per_bit());
     cycle_cnt_init();
+    uint8_t ball;
+    write_cyc_until(uart.tx, 1, cycle_cnt_read(), 6000);
+    for (unsigned i = 0; i < BALL_TEST_N; i++) {
+        ball = sw_uart_get8 (&uart);
+        sw_uart_put8(&uart, ball);
+    }
 
-#   define MAXSAMPLES 32
-    log_ent_t log[MAXSAMPLES];
+    printk ("GOT BALL %x\n", ball);
+}
 
-    unsigned n = scope(pin, log, MAXSAMPLES, cycles_per_sec(1));
+void notmain(void) {
+//     int pin = 21;
+//     gpio_set_input(pin);
+//     cycle_cnt_init();
 
-    // <CYCLE_PER_FLIP> is in ../scope-constants.h
-    dump_samples(log, n, CYCLE_PER_FLIP);
+// #   define MAXSAMPLES 32
+//     log_ent_t log[MAXSAMPLES];
+
+//     unsigned n = scope(pin, log, MAXSAMPLES, cycles_per_sec(1));
+
+//     // <CYCLE_PER_FLIP> is in ../scope-constants.h
+//     dump_samples(log, n, cycles_per_bit());
+    
+    client ();
     clean_reboot();
 }

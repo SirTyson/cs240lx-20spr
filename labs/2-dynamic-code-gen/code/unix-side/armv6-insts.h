@@ -108,4 +108,16 @@ arm_or_imm_rot(uint8_t rd, uint8_t rs1, uint8_t imm8, uint8_t rot_nbits) {
     return 0xe2800000 | (rd << 12) | (rs1 << 16) | (rot_nbits << 8) | imm8;
 }
 
+/*static inline uint32_t
+arm_b (uint32_t src_addr, uint32_t target_addr)
+{
+  unimplimented();
+}
+
+static inline uint32_t
+arm_ldr (uint32_t base, uint32_t load, uint8_t off)
+{
+  
+}
+*/
 #endif
