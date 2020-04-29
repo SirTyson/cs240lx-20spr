@@ -26,7 +26,7 @@ void place_cursor(neo_t h, int i) {
 
 void notmain(void) {
     uart_init();
-    init_gpio ();
+    //init_gpio ();
 
     // have to initialize the cycle counter or it returns 0.
     cycle_cnt_init();
@@ -40,13 +40,13 @@ void notmain(void) {
 
     // NOTE: when you get your code working, check these timings.
     // part 1: check your timings for t0l, t1h, t1l, t0l.
-    check_timings(pix_pin);
+    //check_timings(pix_pin);
 
     // part2: turn on one pixel to blue.
     // make sure you can:
     //  1. write different colors.
     //  2. write different pixels.
-    pix_sendpixel(pix_pin,0,0,0xff);
+    pix_sendpixel(pix_pin, 0, 0,0xff);
     pix_flush(pix_pin);
     delay_ms(1000*3);
 

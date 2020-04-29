@@ -72,20 +72,19 @@
     // if you optimize, i would suggest making a seperate copy you 
     // can flip between.
     enum { 
-        // to send a 1: set pin high for T1H ns, then low for T0H ns.
-        T1H = ns_to_cycles(350),        // Width of a 1 bit in ns
-        T0H = ns_to_cycles(900),        // Width of a 0 bit in ns
+        T1H = ns_to_cycles(250),        // Width of a 1 bit in ns
+        T0H = ns_to_cycles(800),        // Width of a 0 bit in ns
         // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
-        T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
+        T1L = ns_to_cycles(250),        // Width of a 1 bit in ns
+        T0L = ns_to_cycles(800),        // Width of a 0 bit in ns
 
-        // to make the LED switch to the new values, old the pin low for FLUSH ns
+        // // to make the LED switch to the new values, old the pin low for FLUSH ns
         FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
-        // T1H = ns_to_cycles(200),        // Width of a 1 bit in ns
-        // T0H = ns_to_cycles(750),        // Width of a 0 bit in ns
+        // T1H = ns_to_cycles(350),        // Width of a 1 bit in ns
+        // T0H = ns_to_cycles(900),        // Width of a 0 bit in ns
         // // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        // T1L = ns_to_cycles(200),        // Width of a 1 bit in ns
-        // T0L = ns_to_cycles(750),        // Width of a 0 bit in ns
+        // T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
+        // T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
 
         // // to make the LED switch to the new values, old the pin low for FLUSH ns
         // FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
@@ -117,15 +116,15 @@
 #define gpio_set_off "error"
 #define gpio_write "error"
 
-register unsigned on_0 asm ("r5");
-register unsigned clr_0 asm ("r6");
+// register unsigned on_0 asm ("r5");
+// register unsigned clr_0 asm ("r6");
 
-static inline void 
-init_gpio ()
-{
-    on_0 = 0x2020001c;
-    clr_0 = 0x20200028;
-}
+// static inline void 
+// init_gpio ()
+// {
+//     on_0 = 0x2020001c;
+//     clr_0 = 0x20200028;
+// }
 #define ON_0 0x2020001c
 #define CLR_0 0x20200028
 // static inline void
@@ -165,10 +164,10 @@ static unsigned const compensation = 16;
 
 // write 1 for <ncycles>: since reading the cycle counter itself takes cycles
 // you may need to add a constant to correct for this.
-#define FUZZ_CYCLE 25
+// #define FUZZ_CYCLE 25
 static inline void timed_on(unsigned pin, unsigned ncycles) {
     gpio_set_on_raw(pin);
-    unsigned start = cycle_cnt_read() - FUZZ_CYCLE;
+    unsigned start = cycle_cnt_read();
     while((cycle_cnt_read() - start) < ncycles);
 }
 
@@ -176,7 +175,7 @@ static inline void timed_on(unsigned pin, unsigned ncycles) {
 // may need to add a constant to correct for it.
 static inline void timed_off(unsigned pin, unsigned ncycles) {
     gpio_set_off_raw(pin);
-    unsigned start = cycle_cnt_read() - FUZZ_CYCLE;
+    unsigned start = cycle_cnt_read();
     while((cycle_cnt_read() - start) < ncycles);
 }
 
@@ -195,7 +194,7 @@ static inline void t1l(unsigned pin) {
 }
 // implement T0L from the datasheed.
 static inline void t0l(unsigned pin) {
-    timed_off (pin, T0H);
+    timed_off (pin, T0L);
 }
 // implement RESET from the datasheet.
 static inline void treset(unsigned pin) {
@@ -228,8 +227,14 @@ static inline void pix_sendbit(unsigned pin, uint8_t b) {
 // becomes huge: unclear if better.  if you decide to inline it, make sure you run
 // tests before and after.  
 static void pix_sendbyte(unsigned pin, uint8_t b) {
-    for (unsigned i = 0; i < 8; i++)
-        pix_sendbit(pin, b & (1 << i));
+    pix_sendbit(pin, b & (1 << 7));
+    pix_sendbit(pin, b & (1 << 6));
+    pix_sendbit(pin, b & (1 << 5));
+    pix_sendbit(pin, b & (1 << 4));
+    pix_sendbit(pin, b & (1 << 3));
+    pix_sendbit(pin, b & (1 << 2));
+    pix_sendbit(pin, b & (1 << 1));
+    pix_sendbit(pin, b & 1);
 }
 
 // use pix_sendbyte to send bytes [<r> red, <g> green, <b> blue out on pin <pin>.
