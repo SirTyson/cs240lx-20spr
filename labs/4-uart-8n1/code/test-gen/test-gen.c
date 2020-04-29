@@ -32,6 +32,7 @@ void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
 void
 server (void)
 {
+    init_gpio ();
     gpio_set_input (IN_0);
     gpio_set_output (OUT_0);
     sw_uart_t uart;
@@ -40,15 +41,16 @@ server (void)
 
     uint8_t ball = BALL;
     gpio_write_raw (uart.tx, STOP_BIT); // Turn line on to signal server ready
-    unsigned v = !gpio_read(uart.rx);
-    wait_until_cyc(uart.rx, v, cycle_cnt_read(), TIMEOUT); // Wait for client connection
-    for (unsigned i = 0; i < BALL_TEST_N; i++) {
-        sw_uart_put8 (&uart, ball);
-        ball = sw_uart_get8 (&uart);
-   }
+    //wait_until_cyc(uart.rx, 1, cycle_cnt_read(), TIMEOUT); // Wait for client connection
+    //printk("Connected!\n");
+    
+    // for (unsigned i = 0; i < BALL_TEST_N; i++) {
+    sw_uart_put8 (&uart, ball);
+    //     //ball = sw_uart_get8 (&uart);
+    // }
 
-    printk("After %d iterations, ball is: %x. Ball should be %x.\n", 
-            BALL_TEST_N, ball, BALL);
+    //printk("After %d iterations, ball is: %x. Ball should be %x.\n", 
+    //        BALL_TEST_N, ball, BALL);
 }
 
 void notmain(void) {

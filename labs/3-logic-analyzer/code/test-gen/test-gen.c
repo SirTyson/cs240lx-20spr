@@ -21,6 +21,7 @@ void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
 }
 
 void notmain(void) {
+    init_gpio ();
     int pin = 21;
     gpio_set_output(pin);
     cycle_cnt_init();

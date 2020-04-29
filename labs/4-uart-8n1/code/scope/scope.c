@@ -68,29 +68,35 @@ client (void)
     sw_uart_t uart;
     sw_uart_init (&uart, OUT_0, IN_0, BAUD_RATE, cycles_per_bit());
     cycle_cnt_init();
+
     uint8_t ball;
-    write_cyc_until(uart.tx, 1, cycle_cnt_read(), 6000);
+    wait_until_cyc(uart.rx, STOP_BIT, cycle_cnt_read(), TIMEOUT); // Wait for server to turn on
+    gpio_write_raw (uart.tx, 1); // Signal to server that client ready for msg
+    printk("Connected!\n");
     for (unsigned i = 0; i < BALL_TEST_N; i++) {
         ball = sw_uart_get8 (&uart);
-        sw_uart_put8(&uart, ball);
+        //sw_uart_put8(&uart, ball);
     }
 
     printk ("GOT BALL %x\n", ball);
 }
 
 void notmain(void) {
-//     int pin = 21;
-//     gpio_set_input(pin);
-//     cycle_cnt_init();
+    init_gpio ();
+    int pin = IN_0;
+    gpio_set_input(pin);
+    cycle_cnt_init();
 
-// #   define MAXSAMPLES 32
-//     log_ent_t log[MAXSAMPLES];
+#   define MAXSAMPLES 32
+    log_ent_t log[MAXSAMPLES];
 
-//     unsigned n = scope(pin, log, MAXSAMPLES, cycles_per_sec(1));
+    // gpio_set_output(OUT_0);
+    // gpio_write_raw (OUT_0, 1);
+    unsigned n = scope(pin, log, MAXSAMPLES, cycles_per_sec(1));
 
-//     // <CYCLE_PER_FLIP> is in ../scope-constants.h
-//     dump_samples(log, n, cycles_per_bit());
+    // <CYCLE_PER_FLIP> is in ../scope-constants.h
+    dump_samples(log, n, cycles_per_bit());
     
-    client ();
+    //client ();
     clean_reboot();
 }
