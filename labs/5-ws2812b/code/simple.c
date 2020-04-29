@@ -26,6 +26,7 @@ void place_cursor(neo_t h, int i) {
 
 void notmain(void) {
     uart_init();
+    init_gpio ();
 
     // have to initialize the cycle counter or it returns 0.
     cycle_cnt_init();

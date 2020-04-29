@@ -24,9 +24,9 @@ DEPS := $(MEMMAP) $(LPI) $(wildcard ./*.h) ./Makefile
 all: libpi $(OBJS) $(NAME).bin run.first
 
 run.first:
-	my-install /dev/ttyUSB0 ./$(NAME).bin
+	pi-install /dev/ttyUSB0 ./$(NAME).bin
 run.last:
-	my-install /dev/ttyUSB1 ./$(NAME).bin
+	pi-install /dev/ttyUSB1 ./$(NAME).bin
     
 libpi: 
 	@ # @make -s -C $(LPP)

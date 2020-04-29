@@ -60,24 +60,32 @@
 // A+ CPU speed: 700MHz (700 million cycles per second)
 #define MHz 700UL
 
+
+
 // convert nanoseconds to pi cycles: you need to modify this if you change
 // the pi's clock speed.
 #define ns_to_cycles(x) (unsigned) ((x * 7UL) / 10UL )
 
 #ifndef OPTIMIZE_NEO_TIMING
 
-#   error "you need to define these enums using the datasheet."
-
     // these are the timings recommended by the datasheet.
     // if you optimize, i would suggest making a seperate copy you 
     // can flip between.
     enum { 
         // to send a 1: set pin high for T1H ns, then low for T0H ns.
-        T1H = ns_to_cycles(0),        // Width of a 1 bit in ns
-        T0H = ns_to_cycles(0),        // Width of a 0 bit in ns
+        // T1H = ns_to_cycles(350),        // Width of a 1 bit in ns
+        // T0H = ns_to_cycles(900),        // Width of a 0 bit in ns
+        // // to send a 0: set pin high for T1L ns, then low for T0L ns.
+        // T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
+        // T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
+
+        // // to make the LED switch to the new values, old the pin low for FLUSH ns
+        // FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
+        T1H = ns_to_cycles(200),        // Width of a 1 bit in ns
+        T0H = ns_to_cycles(750),        // Width of a 0 bit in ns
         // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        T1L = ns_to_cycles(0),        // Width of a 1 bit in ns
-        T0L = ns_to_cycles(0),        // Width of a 0 bit in ns
+        T1L = ns_to_cycles(200),        // Width of a 1 bit in ns
+        T0L = ns_to_cycles(750),        // Width of a 0 bit in ns
 
         // to make the LED switch to the new values, old the pin low for FLUSH ns
         FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
@@ -109,13 +117,31 @@
 #define gpio_set_off "error"
 #define gpio_write "error"
 
+register unsigned on_0 asm ("r5");
+register unsigned clr_0 asm ("r6");
+
+static inline void 
+init_gpio ()
+{
+    on_0 = 0x2020001c;
+    clr_0 = 0x20200028;
+}
+
+// static inline void
+// gpio_write_raw (unsigned pin, unsigned v)
+// {
+//     v ? put32 ((volatile void *)(on_0 + pin), 1 << pin):
+//         put32 ((volatile void *)(clr_0 + pin), 1 << pin);
+// }
+
 // duplicate set_on/off so we can inline to reduce overhead.
 // they have to run in < the delay we are shooting for.
-static inline void gpio_set_on_raw(unsigned pin) {
-    unimplemented();
+static inline void gpio_set_on_raw (unsigned pin) {
+    *(volatile unsigned *)(on_0) = (1 << pin);
 }
-static inline void gpio_set_off_raw(unsigned pin) {
-    unimplemented();
+
+static inline void gpio_set_off_raw (unsigned pin) {
+    *(volatile unsigned *)(clr_0) = (1 << pin);
 }
 
 /****************************************************************************
@@ -138,36 +164,41 @@ static unsigned const compensation = 16;
 
 // write 1 for <ncycles>: since reading the cycle counter itself takes cycles
 // you may need to add a constant to correct for this.
+#define FUZZ_CYCLE 25
 static inline void timed_on(unsigned pin, unsigned ncycles) {
-    unimplemented();
+    gpio_set_on_raw(pin);
+    unsigned start = cycle_cnt_read() - FUZZ_CYCLE;
+    while((cycle_cnt_read() - start) < ncycles);
 }
 
 // write 0 for <ncycles>: since reading the cycle counter takes cycles you
 // may need to add a constant to correct for it.
 static inline void timed_off(unsigned pin, unsigned ncycles) {
-    unimplemented();
+    gpio_set_off_raw(pin);
+    unsigned start = cycle_cnt_read() - FUZZ_CYCLE;
+    while((cycle_cnt_read() - start) < ncycles);
 }
 
 // implement T1H from the datasheet.
 static inline void t1h(unsigned pin) {
-    unimplemented();
+    timed_on (pin, T1H);
 }
 
 // implement T0H from the datasheet.
 static inline void t0h(unsigned pin) {
-    unimplemented();
+    timed_on (pin, T0H);
 }
 // implement T1L from the datasheet.
 static inline void t1l(unsigned pin) {
-    unimplemented();
+    timed_off (pin, T1L);
 }
 // implement T0L from the datasheed.
 static inline void t0l(unsigned pin) {
-    unimplemented();
+    timed_off (pin, T0H);
 }
 // implement RESET from the datasheet.
 static inline void treset(unsigned pin) {
-    unimplemented();
+    timed_off (pin, FLUSH);
 }
 
 /***********************************************************************************
