@@ -46,24 +46,24 @@ void notmain(void) {
     // make sure you can:
     //  1. write different colors.
     //  2. write different pixels.
-    pix_sendpixel(pix_pin, 0,0,0xff);
+    pix_sendpixel(pix_pin,0,0,0xff);
     pix_flush(pix_pin);
     delay_ms(1000*3);
 
     // part 3: make sure when you implement the neopixel 
     // interface works and pushes a pixel around your light
     // array.
-    unsigned npixels = 60;  // you'll have to figure this out.
-    neo_t h = neopix_init(pix_pin, npixels);
-    unsigned start = timer_get_usec();
-    while(1) {
-        for(int j = 0; j < 10; j++) {
-            for(int i = 0; i < npixels; i++) {
-                place_cursor(h,i);
-                delay_ms(10-j);
-            }
-        }
-    }
+    // unsigned npixels = 60;  // you'll have to figure this out.
+    // neo_t h = neopix_init(pix_pin, npixels);
+    // unsigned start = timer_get_usec();
+    // while(1) {
+    //     for(int j = 0; j < 10; j++) {
+    //         for(int i = 0; i < npixels; i++) {
+    //             place_cursor(h,i);
+    //             delay_ms(10-j);
+    //         }
+    //     }
+    // }
 
     // part 4:   do some kind of interesting trick with your light strip.
 
