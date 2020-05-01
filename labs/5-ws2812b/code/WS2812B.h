@@ -72,22 +72,22 @@
     // if you optimize, i would suggest making a seperate copy you 
     // can flip between.
     enum { 
-        T1H = ns_to_cycles(250),        // Width of a 1 bit in ns
-        T0H = ns_to_cycles(800),        // Width of a 0 bit in ns
-        // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        T1L = ns_to_cycles(250),        // Width of a 1 bit in ns
-        T0L = ns_to_cycles(800),        // Width of a 0 bit in ns
-
-        // // to make the LED switch to the new values, old the pin low for FLUSH ns
-        FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
-        // T1H = ns_to_cycles(350),        // Width of a 1 bit in ns
-        // T0H = ns_to_cycles(900),        // Width of a 0 bit in ns
+        // T1H = ns_to_cycles(250),        // Width of a 1 bit in ns
+        // T0H = ns_to_cycles(800),        // Width of a 0 bit in ns
         // // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        // T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
-        // T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
+        // T1L = ns_to_cycles(250),        // Width of a 1 bit in ns
+        // T0L = ns_to_cycles(800),        // Width of a 0 bit in ns
 
-        // // to make the LED switch to the new values, old the pin low for FLUSH ns
+        // // // to make the LED switch to the new values, old the pin low for FLUSH ns
         // FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
+        T1H = ns_to_cycles(350),        // Width of a 1 bit in ns
+        T0H = ns_to_cycles(900),        // Width of a 0 bit in ns
+        // to send a 0: set pin high for T1L ns, then low for T0L ns.
+        T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
+        T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
+
+        //to make the LED switch to the new values, old the pin low for FLUSH ns
+        FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
     };
 
 #else
@@ -137,11 +137,11 @@
 // duplicate set_on/off so we can inline to reduce overhead.
 // they have to run in < the delay we are shooting for.
 static inline void gpio_set_on_raw (unsigned pin) {
-    *(volatile unsigned *)(ON_0) = (1 << pin);
+    *(volatile unsigned *)(ON_0) = (pin << 21);
 }
 
 static inline void gpio_set_off_raw (unsigned pin) {
-    *(volatile unsigned *)(CLR_0) = (1 << pin);
+    *(volatile unsigned *)(CLR_0) = (pin << 21);
 }
 
 /****************************************************************************
@@ -164,18 +164,18 @@ static unsigned const compensation = 16;
 
 // write 1 for <ncycles>: since reading the cycle counter itself takes cycles
 // you may need to add a constant to correct for this.
-// #define FUZZ_CYCLE 25
+#define FUZZ_CYCLE 10
 static inline void timed_on(unsigned pin, unsigned ncycles) {
+    unsigned start = cycle_cnt_read() + FUZZ_CYCLE;
     gpio_set_on_raw(pin);
-    unsigned start = cycle_cnt_read();
     while((cycle_cnt_read() - start) < ncycles);
 }
 
 // write 0 for <ncycles>: since reading the cycle counter takes cycles you
 // may need to add a constant to correct for it.
 static inline void timed_off(unsigned pin, unsigned ncycles) {
+    unsigned start = cycle_cnt_read() + FUZZ_CYCLE;
     gpio_set_off_raw(pin);
-    unsigned start = cycle_cnt_read();
     while((cycle_cnt_read() - start) < ncycles);
 }
 
@@ -227,14 +227,15 @@ static inline void pix_sendbit(unsigned pin, uint8_t b) {
 // becomes huge: unclear if better.  if you decide to inline it, make sure you run
 // tests before and after.  
 static void pix_sendbyte(unsigned pin, uint8_t b) {
-    pix_sendbit(pin, b & (1 << 7));
-    pix_sendbit(pin, b & (1 << 6));
-    pix_sendbit(pin, b & (1 << 5));
-    pix_sendbit(pin, b & (1 << 4));
-    pix_sendbit(pin, b & (1 << 3));
-    pix_sendbit(pin, b & (1 << 2));
-    pix_sendbit(pin, b & (1 << 1));
-    pix_sendbit(pin, b & 1);
+    for (int i = 7; i > -1; i--)
+        pix_sendbit(pin, b & (1 << i));
+    // pix_sendbit(pin, b & (1 << 6));
+    // pix_sendbit(pin, b & (1 << 5));
+    // pix_sendbit(pin, b & (1 << 4));
+    // pix_sendbit(pin, b & (1 << 3));
+    // pix_sendbit(pin, b & (1 << 2));
+    // pix_sendbit(pin, b & (1 << 1));
+    // pix_sendbit(pin, b & 1);
 }
 
 // use pix_sendbyte to send bytes [<r> red, <g> green, <b> blue out on pin <pin>.

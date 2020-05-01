@@ -28,6 +28,10 @@ struct neo_handle {
 };
 
 void neopix_flush(neo_t h) { 
+    pix_sendpixel(h->pin, h->pixels[0].r, h->pixels[0].g, h->pixels[0].b);
+    // pix_flush(h->pin);
+    for (size_t i = 0; i < h->npixel; i++)
+        pix_sendpixel(h->pin, h->pixels[i].r, h->pixels[i].g, h->pixels[i].b);
     pix_flush(h->pin);
 }
 
@@ -60,5 +64,7 @@ void neopix_clear(neo_t h) {
 }
 
 void neopix_write(neo_t h, uint32_t pos, uint8_t r, uint8_t g, uint8_t b) {
-    unimplemented();
+    h->pixels[pos].r = r;
+    h->pixels[pos].g = g;
+    h->pixels[pos].b = b;
 }
