@@ -1,6 +1,7 @@
 // turn the pullup/pulldown on pins {20,21} off so you don't get
 // weird behavior later.
 #include "rpi.h"
+#include "../../../liblxpi/liblxpi.h"
 
 void notmain(void) {
     uart_init();

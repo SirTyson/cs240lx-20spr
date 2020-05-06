@@ -1,5 +1,6 @@
 // set pin 21 to a pullup, 20 to a pulldown.
 #include "rpi.h"
+#include "../../../liblxpi/liblxpi.h"
 
 void notmain(void) {
     uart_init();

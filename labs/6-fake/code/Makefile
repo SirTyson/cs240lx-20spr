@@ -26,7 +26,7 @@ LXP = $(CS240LX_2021_PATH)/liblxpi
 LXPI = $(LXP)/liblxpi.a
 
 # i *think* order is important.
-LIBS = $(LXPI) $(LPI)  
+LIBS = $(LXPI) $(LPI) 
 
 # uncomment the different tests.
 all: libs $(OBJS) on.bin off.bin # fake-libpi
