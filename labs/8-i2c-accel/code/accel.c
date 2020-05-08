@@ -23,6 +23,16 @@
  * some helpers
  */
 
+/* All page numbers from LSM6DS33: always-on 3D accelerometer and 3D gyroscope */
+
+/* Values from default startup sequence pg. 23 */
+enum { ENABLE_ALL_AXES   = 0x38,
+       READY_DATA_INTER  = 0x01,
+       XLDA_BITMASK      = 1   ,
+       READS_PER_POLL    = 6   ,   /* number of axes * 2 */
+       ENABLE_BDU        = 1<<6,
+      };
+
 enum { VAL_WHO_AM_I      = 0x69, };
 
 // read register <reg> from i2c device <addr>
@@ -56,11 +66,17 @@ int imu_rd_n(uint8_t addr, uint8_t base_reg, uint8_t *v, uint32_t n) {
 
 // returns the raw value from the sensor.
 static short mg_raw(uint8_t hi, uint8_t lo) {
-    unimplemented();
+    uint16_t res = (uint16_t) hi;
+    res = res << 8;
+    res |= (uint16_t) lo;
+    return res;
 }
 // returns milligauss, integer
 static int mg_scaled(int v, int mg_scale) {
-    unimplemented();
+    assert(mg_scale <= 16);
+    printk ("V=%d\n", v);
+    printk ("mg_scale=%d\n", mg_scale);
+    return v;
 }
 
 static void test_mg(int expected, uint8_t h, uint8_t l, unsigned g) {
@@ -82,8 +98,10 @@ imu_xyz_t accel_scale(accel_t *h, imu_xyz_t xyz) {
     return xyz_mk(x,y,z);
 }
 
+/* Read STATUS_REG, XLDA bit determines if data ready, pg 8, 23 */
 int accel_has_data(accel_t *h) {
-    unimplemented();
+    uint8_t status = imu_rd (h->addr, STATUS_REG);
+    return status & XLDA_BITMASK;
 }
 
 // block until there is data and then return it (raw)
@@ -100,7 +118,18 @@ imu_xyz_t accel_rd(accel_t *h) {
 
     unsigned mg_scale = h->g;
     uint8_t addr = h->addr;
-    unimplemented();
+
+    while (!accel_has_data (h))
+        ;
+
+    uint8_t buf[READS_PER_POLL];
+    imu_rd_n (h->addr, OUTX_L_XL, buf, READS_PER_POLL);
+    return (imu_xyz_t) {
+        .x = mg_raw (buf[1], buf[0]),
+        .y = mg_raw (buf[3], buf[2]),
+        .z = mg_raw (buf[5], buf[4])
+    };
+
 }
 
 // first do the cookbook from the data sheet.
@@ -132,7 +161,18 @@ accel_t accel_init(uint8_t addr, lsm6ds33_g_t g, lsm6ds33_hz_t hz) {
     unsigned g_bits = g&0xff;
     assert(legal_g_bits(g_bits));
 
-    unimplemented();
+    accel_t h = (accel_t) {.addr = addr, .hz = hz, .g = g };
+
+    /* Startup sequence accelerator pg. 23 */
+    imu_wr (h.addr, CTRL9_XL, ENABLE_ALL_AXES);
+    imu_wr (h.addr, CTRL1_XL, h.hz << 4);
+    imu_wr (h.addr, CTRL3_C, ENABLE_BDU); // BDU pg 24
+    delay_ms(20);
+
+    /* Through away garbage readings */
+    accel_rd (&h);
+    accel_rd (&h);
+    return h;
 }
 
 
