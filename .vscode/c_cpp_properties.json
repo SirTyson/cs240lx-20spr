@@ -7,13 +7,21 @@
                 "${CS140E_PATH}/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "cStandard": "c99",
             "intelliSenseMode": "gcc-x86",
             "compilerArgs": [
+                "-Og",
+                "-Wall",
+                "-nostdlib",
+                "-nostartfiles",
+                "-ffreestanding",
+                "-mcpu=arm1176jzf-s",
+                "-mtune=arm1176jzf-s",
+                "-ggdb",
                 "-Wno-unused-function",
-                "-Wno-unused-variable "
+                "-Wno-unused-variable",
+                "-Wno-pointer-sign "
             ]
         }
     ],

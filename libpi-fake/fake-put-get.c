@@ -3,6 +3,7 @@
 // for the moment: simply print what put32 is writing, and return a random value for
 // get32
 #include "rpi.h"
+#include "fake-pi.h"
 
 unsigned get32(const volatile void *addr) {
     // you won't need this if you write fake versions of the timer code.
@@ -12,6 +13,8 @@ unsigned get32(const volatile void *addr) {
 }
 
 // for today: simply print (addr,val) using trace()
-void put32(volatile void *addr, unsigned val) {
-    unimplemented();
+void 
+put32 (volatile void *addr, unsigned val) 
+{
+    trace ("PUT32(%p)=0x%x\n", addr, val); 
 }

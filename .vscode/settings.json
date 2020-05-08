@@ -7,6 +7,7 @@
         "pi-test.h": "c",
         "my_sw-uart.h": "c",
         "gpio.h": "c",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "liblxpi.h": "c"
     }
 }

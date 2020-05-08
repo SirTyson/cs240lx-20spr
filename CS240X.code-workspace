@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cycle-util.h": "c",
+			"cycle-count.h": "c",
+			"rpi.h": "c",
+			"scope-constants.h": "c",
+			"pi-test.h": "c",
+			"my_sw-uart.h": "c",
+			"gpio.h": "c",
+			"*.tcc": "cpp",
+			"liblxpi.h": "c"
+		}
+	},
+	"C_Cpp.default.includePath": ["$(CS140E_PATH)/libpi/includes.mk"],
+
+}
