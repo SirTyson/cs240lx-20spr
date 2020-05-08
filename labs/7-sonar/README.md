@@ -92,19 +92,138 @@ Expected tests and their results:
 ----------------------------------------------------------------------
 ### Part 2: Extending your fake-pi
 
+
+#### High level fake pi.
+
 Your libpi should work fine "as is."  Before going further: verify that
-you get the same checksums as everyone else.
+you get the same checksums as everyone else.  
+
+Do the high-level version first.  Check this by:
+   1. Commenting out `timer_get_usec` in `sonar.c` (you will put this back later).
+   2. running `make` You may need to implement some undefined references.
+   3. Synonyms: some people call `gpio_set_on(pin)` others call
+      `gpio_write(pin,1)` --- both will do the same thing.   Just make `gpio_set_on` to
+       call `gpio_write` instead.
+
+My checksum for the high-level version is:
+
+    % ./sonar.hl.fake | cksum
+    2561594719 9552
+
+First 20 lines is:
+
+    TRACE:fake_random:random called=1 times, value=1804289383
+    TRACE:uart_init:uart
+    PI:starting sonar!
+    TRACE:gpio_set_output:pin=20
+    TRACE:gpio_write:pin=20, val=0
+    TRACE:gpio_set_input:pin=21
+    TRACE:gpio_set_pulldown:pin=21
+    PI:sonar ready!
+    TRACE:gpio_write:pin=20, val=1
+    TRACE:delay_us:delay_us = 10usec
+    TRACE:gpio_write:pin=20, val=0
+    TRACE:delay_us:delay_us = 148usec
+    TRACE:timer_get_usec:getting usec = 1804289542usec
+    TRACE:fake_random:random called=2 times, value=846930886
+    TRACE:gpio_read:pin=21, returning=0
+    TRACE:timer_get_usec:getting usec = 1804289543usec
+    TRACE:fake_random:random called=3 times, value=1681692777
+    TRACE:gpio_read:pin=21, returning=1
+    TRACE:timer_get_usec:getting usec = 1804289544usec
+    TRACE:timer_get_usec:getting usec = 1804289545usec
 
 Of course, each time you run, you will get the same value --- as you
 recall, you made your fake time value increment by 1 each time the timer
 call is invoked.  Thus, we'll quit as soon as it gets the same value.
 This isn't that interesting.
 
+You can see this if you grep for "distance" you'll see  we never do anything as is:
+
+    % ./sonar.hl.fake  | grep dist
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+    PI:distance = 0 inches
+
+
 When we fake something that is important, we often have multiple
 choices.  And the choice that is "best" depends on what we are testing.
 One approach is to try to build every possible option into the tool.
 This is a huge amount of work and will typically fail anyway, since most
 people can't anticipate all possible situations.
+
+As a first cut,  we'll exploit the linker and add a simple routine in
+the driver.  Uncomment out `timer_get_usec` in `sonar.c` --- you'll
+notice it's s protected by the preprocessor flags `RPI_UNIX` and
+`FAKE_HIGH_LEVEL` only defined during fake compilation for high-level:
+
+    #ifdef RPI_UNIX
+    #   include "fake-pi.h"
+    
+    #   ifdef FAKE_LOW_LEVEL
+
+        ...
+
+    #   elif defined (FAKE_HIGH_LEVEL)
+
+        unsigned timer_get_usec(void) {
+            unsigned t = fake_time_inc( fake_random() % (timeout * 2) );
+            trace("getting usec = %dusec\n", t);
+            return t;
+        }
+
+    #   else
+    
+    #       error "Impossible: must define FAKE_HIGH_LEVEL or FAKE_LOW_LEVEL"
+    
+    #   endif
+    
+    #endif
+
+You now have a definition of `timer_get_usec` customized to our domain
+--- we want to timeout some number of times to test that code, and also
+cover a wider range of distances than 0.
+
+After this is set, we get:
+
+    % ./sonar.hl.fake | cksum
+    196199192 21103
+
+
+My first 20 lines:
+
+    TRACE:fake_random:random called=1 times, value=1804289383
+    TRACE:uart_init:uart
+    PI:starting sonar!
+    TRACE:gpio_set_output:pin=20
+    TRACE:gpio_write:pin=20, val=0
+    TRACE:gpio_set_input:pin=21
+    TRACE:gpio_set_pulldown:pin=21
+    PI:sonar ready!
+    TRACE:gpio_write:pin=20, val=1
+    TRACE:delay_us:delay_us = 10usec
+    TRACE:gpio_write:pin=20, val=0
+    TRACE:delay_us:delay_us = 148usec
+    TRACE:fake_random:random called=2 times, value=846930886
+    TRACE:timer_get_usec:getting usec = 1804330427usec
+    TRACE:fake_random:random called=3 times, value=1681692777
+    TRACE:gpio_read:pin=21, returning=1
+    TRACE:fake_random:random called=4 times, value=1714636915
+    TRACE:timer_get_usec:getting usec = 1804397342usec
+    TRACE:fake_random:random called=5 times, value=1957747793
+    TRACE:timer_get_usec:getting usec = 1804475135usec
+
+
+#### Low-level fake-pi
+
+For the low-level, we can be a bit fancier.
 
 Instead we use an under-appreciated method to make sure any possible
 decision can be made:
@@ -147,11 +266,12 @@ is a hint that you should allow parameterization.
 So today, you will implement two simple methods that `libpi-fake` calls:
 
     // returns 1 if it decided on a value for <val>.  otherwise 0.
-    int mem_model_get32(uint32_t *val, uint32_t addr);
+    int mem_model_get32(volatile void *addr, uint32_t *val);
 
-    // performs any side-effect on <addr> using val, returns 0 if it 
+    // performs any side-effect on <addr> using val, returns 0 if it
     // did nothing.
-    int mem_model_put32(uint32_t *addr, uint32_t val);
+    int mem_model_put32(volatile void *addr, uint32_t val);
+
 
 You should:
   1. Put in default implementations into two new files in the `libpi-fake` directory:
@@ -174,6 +294,34 @@ Make sure you get the same results as everyone else!
     `PUT32` and `GET32` means we can also control it thoroughly by
     overriding these.  I might go so far as to assert that there is
     likely a theorem here of some kind.
+
+For the low-level I have:
+
+    ./sonar.ll.fake | cksum
+    1294477244 51364
+
+And the first 20 lines:
+
+    TRACE:fake_random:random called=1 times, value=1804289383
+    TRACE:uart_init:uart
+    PI:starting sonar!
+    TRACE:fake_random:random called=2 times, value=846930886
+    TRACE:get32:GET32(0x20200008)=0x327b23c6
+    TRACE:put32:PUT32(0x20200008)=0x327b23c1
+    TRACE:put32:PUT32(0x20200028)=0x100000
+    TRACE:fake_random:random called=3 times, value=1681692777
+    TRACE:get32:GET32(0x20200008)=0x643c9869
+    TRACE:put32:PUT32(0x20200008)=0x643c9841
+    TRACE:dev_barrier:dev barrier
+    TRACE:put32:PUT32(0x20200094)=0x1
+    TRACE:fake_random:random called=4 times, value=1714636915
+    TRACE:get32:GET32(0x20003004)=0x6b8c4aca
+    TRACE:fake_random:random called=5 times, value=1957747793
+    TRACE:get32:GET32(0x20003004)=0x6b8d7aab
+    TRACE:put32:PUT32(0x20200098)=0x200000
+    TRACE:fake_random:random called=6 times, value=424238335
+    TRACE:get32:GET32(0x20003004)=0x6b8eacaa
+    TRACE:fake_random:random called=7 times, value=719885386
 
 ----------------------------------------------------------------------
 ### Extension 1: use two sonar's to more accurately estimate position.

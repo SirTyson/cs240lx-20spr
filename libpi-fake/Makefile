@@ -1,16 +1,16 @@
-TARGET = libpi-fake.a
+TARGET_HL = libpi-fake.hl.a
+TARGET_LL = libpi-fake.ll.a
 LPI = $(CS140E_PATH)/libpi/
 
-# we could use time directly: you will have to build a PUT32 that returns something sensible.
-# if you want to use raw rpi code, put it before our replace
-RAW_PI_SOURCE = $(LPI)/cs140e-src/timer.c 
-# $(LPI)/cs140e-private/gpio.c 
-SOURCES := $(RAW_PI_SOURCE) $(wildcard ./*.c) 
-# SOURCES := $(wildcard ./*.c) 
+include low-level.mk
+
+ifndef LOW_LEVEL_PI_SOURCE
+$(error LOW_LEVEL_PI_SOURCE is not set: this should contain the absolute path to where this directory is.  Define it in your shell's initialiation.  For example, .tcshrc for tcsh or .bashrc for bash)
+endif
 
 
-# add any other object files here.
-# OBJS = fake-put-get.o pi-test.o pi-random.o fake-pi.o fake-gpio.o driver.o fake-time.o
+HL_SOURCES :=  $(wildcard ./*.c) 
+LL_SOURCES := $(LOW_LEVEL_PI_SOURCE) $(wildcard ./*.c) 
 
 # check that your path is defined.
 ifndef CS140E_PATH
@@ -25,25 +25,28 @@ endif
 LPI = $(CS140E_PATH)/libpi
 # where libunix is (currently)
 LUNIX = $(CS240LX_2021_PATH)/libunix/
+LIBPILX = $(CS240LX_2021_PATH)/liblxpi/
 
-VPATH := .:$(LPI):$(LPI)/cs140e-private:$(LPI)/libc:$(LPI)/cs140e-src:$(LPI)/cs140e-src
+VPATH := .:$(LPI):$(LPI)/cs140e-private:$(LPI)/libc:$(LPI)/cs140e-src:$(LPI)/cs140e-src:$(LIBPILX)
+
 START= cs140e-start
 
-OBJS := $(patsubst %.c, %.o, $(SOURCES))
+LL_OBJS := $(patsubst %.c, %.o, $(LL_SOURCES))
+HL_OBJS := $(patsubst %.c, %.o, $(HL_SOURCES))
+
 BUILD_DIR := ./objs
-OBJS := $(foreach o, $(OBJS), $(BUILD_DIR)/$(notdir $o))
 
-
-
+LL_OBJS := $(foreach o, $(LL_OBJS), $(BUILD_DIR)/$(notdir $o))
+HL_OBJS := $(foreach o, $(HL_OBJS), $(BUILD_DIR)/$(notdir $o))
 
 CC=gcc
 CFLAGS = -Wall -g -Og -std=gnu99  -Werror -Wno-unused-function 
-CFLAGS += -I$(LPI) -I$(LUNIX) -DRPI_UNIX
+CFLAGS += -I$(LPI) -I$(LUNIX) -DRPI_UNIX -I$(LIBPILX)
 
 # overdepend: all .o's depend on all .h's  --- make deps as simple as possible.
-DEPS := $(wildcard ./*.h) $(LPI)/rpi.h Makefile 
+DEPS := $(wildcard ./*.h) $(LPI)/rpi.h Makefile  ./low-level.mk
 
-all: $(TARGET)
+all: $(TARGET_HL) $(TARGET_LL)
 
 # XXX: We seem to need this rule to stop compilation with an error if the .c file
 # has one: otherwise make does not stop compilation when generating .d.
@@ -74,11 +77,13 @@ $(BUILD_DIR)/%.d: %.S ./Makefile
 $(BUILD_DIR)/%.d: ;
 .PRECIOUS: $(BUILD_DIR)/%.d
 
-$(TARGET): $(OBJS) $(DEPS) 
-	ar cr $(TARGET) $(OBJS) 
+$(TARGET_LL): $(LL_OBJS) $(DEPS)  ./Makefile
+	ar cr $(TARGET_LL) $(LL_OBJS) 
+$(TARGET_HL): $(HL_OBJS) $(DEPS)  ./Makefile
+	ar cr $(TARGET_HL) $(HL_OBJS) 
 
 clean:
-	rm -f *.o $(TARGET) *~  *.bak  *.out 
+	rm -f *.o *.a *~  *.bak  *.out 
 	rm -rf objs
 
 .PHONY: all clean
