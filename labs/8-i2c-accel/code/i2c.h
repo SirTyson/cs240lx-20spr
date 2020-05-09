@@ -3,7 +3,7 @@
 
 // initialize i2c: note, in many cases the i2c device has a "settling time" while it
 // boots up so you have to delay before you can get legal values.  (delay often in ms)
-void i2c_init(void);
+void i2c_init();
 
 // can call N times, will only initialize once (the first time)
 void i2c_init_once(void);

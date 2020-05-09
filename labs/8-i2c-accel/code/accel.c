@@ -31,6 +31,7 @@ enum { ENABLE_ALL_AXES   = 0x38,
        XLDA_BITMASK      = 1   ,
        READS_PER_POLL    = 6   ,   /* number of axes * 2 */
        ENABLE_BDU        = 1<<6,
+       DRDY_MASK         = 0b1000,
       };
 
 enum { VAL_WHO_AM_I      = 0x69, };
@@ -50,19 +51,47 @@ void imu_wr(uint8_t addr, uint8_t reg, uint8_t v) {
     data[0] = reg;
     data[1] = v;
     i2c_write(addr, data, 2);
-    // printk("writeReg: %x=%x\n", reg, v);
 }
 
 // <base_reg> = lowest reg in sequence. --- hw will auto-increment 
 // if you set IF_INC during initialization.
 int imu_rd_n(uint8_t addr, uint8_t base_reg, uint8_t *v, uint32_t n) {
-        i2c_write(addr, (void*) &base_reg, 1);
-        return i2c_read(addr, v, n);
+    i2c_write(addr, (void*) &base_reg, 1);
+    int read = 0;
+    for (size_t i = 0; i < n; i++)
+        *(v + i) = imu_rd(addr, base_reg + i);
+    return n;
+    //return i2c_read(addr, v, n);
 }
 
 /**********************************************************************
  * simple accel setup and use
  */
+
+static int divide(int nu, int de) {
+
+    int temp = 1;
+    int quotient = 0;
+
+    while (de <= nu) {
+        de <<= 1;
+        temp <<= 1;
+    }
+
+    //printf("%d %d\n",de,temp,nu);
+    while (temp > 1) {
+        de >>= 1;
+        temp >>= 1;
+
+        if (nu >= de) {
+            nu -= de;
+            //printf("%d %d\n",quotient,temp);
+            quotient += temp;
+        }
+    }
+
+    return quotient;
+}
 
 // returns the raw value from the sensor.
 static short mg_raw(uint8_t hi, uint8_t lo) {
@@ -74,9 +103,15 @@ static short mg_raw(uint8_t hi, uint8_t lo) {
 // returns milligauss, integer
 static int mg_scaled(int v, int mg_scale) {
     assert(mg_scale <= 16);
-    printk ("V=%d\n", v);
-    printk ("mg_scale=%d\n", mg_scale);
-    return v;
+    if (v >= 0) {
+        int de = divide(0x4000 * 2, mg_scale);
+        return divide(v * 1000, de);
+    } else {
+        v *= -1;
+        int de = divide(0x4000 * 2, mg_scale);
+        return -divide(v * 1000, de);
+    }
+
 }
 
 static void test_mg(int expected, uint8_t h, uint8_t l, unsigned g) {
@@ -92,9 +127,9 @@ static imu_xyz_t xyz_mk(int x, int y, int z) {
 // takes in raw data and scales it.
 imu_xyz_t accel_scale(accel_t *h, imu_xyz_t xyz) {
     int g = h->g;
-    int x = mg_scaled(h->g, xyz.x);
-    int y = mg_scaled(h->g, xyz.y);
-    int z = mg_scaled(h->g, xyz.z);
+    int x = mg_scaled(xyz.x, h->g);
+    int y = mg_scaled(xyz.y, h->g);
+    int z = mg_scaled(xyz.z, h->g);
     return xyz_mk(x,y,z);
 }
 
@@ -161,17 +196,16 @@ accel_t accel_init(uint8_t addr, lsm6ds33_g_t g, lsm6ds33_hz_t hz) {
     unsigned g_bits = g&0xff;
     assert(legal_g_bits(g_bits));
 
-    accel_t h = (accel_t) {.addr = addr, .hz = hz, .g = g };
+    accel_t h = (accel_t) {.addr = addr, .hz = hz, .g = g_scale };
 
     /* Startup sequence accelerator pg. 23 */
     imu_wr (h.addr, CTRL9_XL, ENABLE_ALL_AXES);
-    imu_wr (h.addr, CTRL1_XL, h.hz << 4);
+    imu_wr (h.addr, CTRL1_XL, h.hz << 4 | g_bits << 2);
     imu_wr (h.addr, CTRL3_C, ENABLE_BDU); // BDU pg 24
+    imu_wr (h.addr, CTRL4_C, DRDY_MASK);  // Status register low until garbage values done pg. 19
     delay_ms(20);
 
-    /* Through away garbage readings */
-    accel_rd (&h);
-    accel_rd (&h);
+
     return h;
 }
 
@@ -189,7 +223,7 @@ void do_accel_test(void) {
     test_mg(-350, 0xe9, 0x97, 2);
     test_mg(-1000, 0xbf, 0xf7, 2);
 
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 100; i++) {
         imu_xyz_t v = accel_rd(&h);
         printk("accel raw values: x=%d,y=%d,z=%d\n", v.x,v.y,v.z);
 

@@ -41,7 +41,7 @@ $(OBJS): $(DEPS)
 	$(OCP) $*.elf -O binary $*.bin
 
 run:
-	my-install ./accel.bin
+	pi-install ./accel.bin
 
 tags: 
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs]
