@@ -151,8 +151,8 @@ int accel_has_data(accel_t *h) {
 imu_xyz_t accel_rd(accel_t *h) {
     // not sure if we have to drain the queue if there are more readings?
 
-    unsigned mg_scale = h->g;
-    uint8_t addr = h->addr;
+    // unsigned mg_scale = h->g;
+    // uint8_t addr = h->addr;
 
     while (!accel_has_data (h))
         ;
