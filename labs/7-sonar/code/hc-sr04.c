@@ -1,11 +1,15 @@
 #include "rpi.h"
 #include "hc-sr04.h"
+#include "../../../liblxpi/liblxpi.h"
 
 // gpio_read(pin) until either:
 //  1. gpio_read(pin) != v ==> return 1.
 //  2. <timeout> microseconds have passed ==> return 0
 int read_while_eq(int pin, int v, unsigned timeout) {
-    unimplemented();
+    unsigned target = timer_get_usec () + timeout;
+    while (timer_get_usec() < target)
+        if (gpio_read(pin) != v) return 1;
+    return 0;
 }
 
 // initialize:
@@ -26,7 +30,10 @@ int read_while_eq(int pin, int v, unsigned timeout) {
 // The comments on the sparkfun product page might be helpful.
 hc_sr04_t hc_sr04_init(int trigger, int echo) {
     hc_sr04_t h = { .trigger = trigger, .echo = echo };
-    unimplemented();
+    gpio_set_output (trigger);
+    gpio_set_input (echo);
+    gpio_set_pulldown (echo);
+
     return h;
 }
 
@@ -48,7 +55,43 @@ hc_sr04_t hc_sr04_init(int trigger, int echo) {
 //	high (or low) readings before you decide to trust the 
 // 	signal.
 //
+
+int divide(int nu, int de) {
+
+    int temp = 1;
+    int quotient = 0;
+
+    while (de <= nu) {
+        de <<= 1;
+        temp <<= 1;
+    }
+
+    while (temp > 1) {
+        de >>= 1;
+        temp >>= 1;
+
+        if (nu >= de) {
+            nu -= de;
+            quotient += temp;
+        }
+    }
+
+    return quotient;
+}
+
+#define ON0 0x2020001c
+#define CLR0 0x20200028
+
 int hc_sr04_get_distance(hc_sr04_t *h, unsigned timeout_usec) {
-    unimplemented();
-    return -1;
+    gpio_write (h->trigger, 1);
+    unsigned start = timer_get_usec ();
+    delay_us (10);
+    gpio_write (h->trigger, 0);
+
+    if (!read_while_eq (h->echo, 0, timeout_usec)) return -1;
+    if (!read_while_eq (h->echo, 1, timeout_usec)) return -1;
+
+    unsigned end = timer_get_usec ();
+    delay_us (10);
+    return divide (end - start, 148);
 }

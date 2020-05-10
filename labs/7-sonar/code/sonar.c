@@ -40,7 +40,7 @@ void notmain(void) {
     hc_sr04_t h = hc_sr04_init(20, 21);
 	printk("sonar ready!\n");
 
-    for(int dist, i = 0; i < 10; i++) {
+    for(int dist, i = 0; i < 100; i++) {
         // read until no timeout.
         while((dist = hc_sr04_get_distance(&h, timeout)) < 0)
             printk("timeout!\n");
