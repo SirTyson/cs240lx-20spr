@@ -10,7 +10,7 @@ void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
     unsigned start = cycle_cnt_read();
     unsigned v = 1;
     for (unsigned i = 0; i < N; i++) {
-        write_cyc_until(pin, v, cycle_cnt_read(), CYCLE_PER_FLIP);
+        write_cyc_until (pin, v, cycle_cnt_read(), CYCLE_PER_FLIP);
         v ^= 1;
     }
 
@@ -21,13 +21,13 @@ void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
 }
 
 void notmain(void) {
-    init_gpio ();
+    enable_cache ();
     int pin = 21;
     gpio_set_output(pin);
     cycle_cnt_init();
 
     // keep it seperate so easy to look at assembly.
-    test_gen(pin, 11, CYCLE_PER_FLIP);
+    test_gen (pin, 11, CYCLE_PER_FLIP);
 
     clean_reboot();
 }
