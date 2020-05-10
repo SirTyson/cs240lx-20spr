@@ -5,14 +5,23 @@
 
 #include "../scope-constants.h"
 
+// Best = 66199
+
 // send N samples at <ncycle> cycles each in a simple way.
 void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
+    pin = 1 << pin;
     unsigned start = cycle_cnt_read();
-    unsigned v = 1;
-    for (unsigned i = 0; i < N; i++) {
-        write_cyc_until (pin, v, cycle_cnt_read(), CYCLE_PER_FLIP);
-        v ^= 1;
-    }
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_clr0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_clr0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_clr0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_clr0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_clr0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
+    write_on0_until (pin, cycle_cnt_read(), CYCLE_PER_FLIP);
 
     unsigned end = cycle_cnt_read();
 
