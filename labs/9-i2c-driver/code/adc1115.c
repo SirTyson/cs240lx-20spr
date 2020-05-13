@@ -29,12 +29,20 @@ void adc_reset(void) {
 //  1. write to the low two bits in the address pointer register. (p27)
 //  2. read the 2 bytes that come back.
 static void adc_write16(uint8_t dev_addr, uint8_t reg, uint16_t v) {
-    unimplemented();
+    uint8_t data[3];
+    data[0] = reg;
+    data[2] = *((uint8_t *)(&v));
+    data[1] = *((uint8_t *)(&v) + 1);
+    i2c_write (dev_addr, data, sizeof (data));
 }
 
 // read a 16-bit register
 static uint16_t adc_read16(uint8_t dev_addr, uint8_t reg) {
-    unimplemented();
+    i2c_write (dev_addr, &reg, 1);
+    uint8_t data[2];
+    i2c_read (dev_addr, data, 2);
+    uint16_t res = 0;
+    return res | (data[0] << 8) | data[1];
 }
 
 void notmain(void) {
@@ -43,14 +51,12 @@ void notmain(void) {
 	i2c_init();
 	delay_ms(30);   // allow time to settle after init.
 
-    unimplemented();
-
     // 0. set these enums to the right values.
 
     // dev address: p23
-    enum { dev_addr = ?? };
+    enum { dev_addr = 0b1001000 };
     // p27: register names
-    enum { conversion_reg = ??, config_reg = ?? };
+    enum { conversion_reg = 0b00, config_reg = 0b01 };
 
     // p28
     // one way to set fields in a register.
@@ -80,16 +86,30 @@ void notmain(void) {
     //   pg: 11:9 = 010
     assert(PGA_V(c) == 0b010);
 
+
     // 3. set the config to:
     //  - PGA gain to +/-4v 
     //  - MODE to continuous.
     //  - DR to 860sps
     // see page 28.
-    unimplemented();
+    c &= ~((uint16_t) PGA(0b111));
+    c |= PGA(0b001);
+    c &= ~((uint16_t) MODE(0b1));
+    c &= ~((uint16_t) DR(0b111));
+    c |= DR(0b111);
+    adc_write16 (dev_addr, config_reg, c);
 
     // 4. read back the config and make sure the fields we set
-    // are correct.
-    unimplemented();
+    // are correct pg. 28
+
+
+    c = adc_read16(dev_addr, config_reg);
+    // Continuous == 0
+    assert(MODE_V(c) == 0);
+    // DR == 860sps
+    assert(DR_V(c) == 0b111);
+    // PGA == 1
+    assert(PGA_V(c) == 0b1);
 
     // 5. just loop and get readings.
     //  - vary your potentiometer
