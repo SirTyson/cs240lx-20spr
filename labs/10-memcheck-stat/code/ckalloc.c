@@ -42,18 +42,33 @@ static uint32_t hdr_cksum(hdr_t *h) {
 static int check_hdr(hdr_t *h) {
     if  ((h->state != ALLOCED && h->state != FREED) || h->cksum != hdr_cksum (h))
     {
-        trace("block %p corrupted at offset %d\n", h, 0);
+        ck_error(h, "block %p corrupted at offset %d\n", h, 0);
         return 0;
     }
 
     return 1;
 }
 
-static int check_mem(char *p, unsigned nbytes) {
+static int check_mem(char *p, unsigned nbytes, hdr_t *h) {
     int i;
     for(i = 0; i < nbytes; i++) {
         if(p[i] != SENTINAL) {
-            trace("block %p corrupted at offset %d\n", p, nbytes);
+            int offs = p - (char *)b_alloc_ptr (h) + i;
+            ck_error(h, "block %p corrupted at offset %d\n", p - h->nbytes_alloc, offs);
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static int check_free_write (char *p, unsigned nbytes, hdr_t *h) {
+    int i;
+    for(i = 0; i < nbytes; i++) {
+        if(p[i] != SENTINAL) {
+            int offs = p - (char *)b_alloc_ptr (h) + i;
+            ck_error(h, "block %p corrupted at offset %d\n", p, offs);
+            trace("\tWrote block after free!\n");
             return 0;
         }
     }
@@ -74,19 +89,19 @@ static void mark_mem(void *p, unsigned nbytes) {
 static int check_block(hdr_t *h) {
     // short circuit the checks.
     return check_hdr(h)
-        && check_mem(b_rz1_ptr(h), REDZONE)
-        && check_mem(b_rz2_ptr(h), b_rz2_nbytes(h));
+        && check_mem(b_rz1_ptr(h), REDZONE, h)
+        && check_mem(b_rz2_ptr(h), b_rz2_nbytes(h), h);
 }
 
-static void hdr_print(hdr_t *h) {
-    src_loc_t *l = &h->alloc_loc;
-    if(l->file)
-        printk("[allocated @ %s:%s:%d]", l->file, l->func, l->lineno);
+// static void (hdr_print)(hdr_t *h) {
+//     src_loc_t *l = &h->alloc_loc;
+//     if(l->file)
+//         printk("[allocated @ %s:%s:%d]", l->file, l->func, l->lineno);
 
-    l = &h->free_loc;
-    if(h->state == FREED && l->file)
-        printk("[freed @ %s:%s:%d]", l->file, l->func, l->lineno);
-}
+//     l = &h->free_loc;
+//     if(h->state == FREED && l->file)
+//         printk("[freed @ %s:%s:%d]", l->file, l->func, l->lineno);
+// }
 
 #define ck_error(_h, args...) do { \
     printk("TRACE:"); hdr_print(_h); printk(args); panic(args); } while(0)
@@ -101,7 +116,8 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
 
     demand(heap, not initialized?);
     trace("freeing %p\n", addr);
-    assert(check_block(h));
+    if (!check_block(h))
+        return;
     h->free_loc = (src_loc_t) {
         .file = file,
         .func = func,
@@ -111,6 +127,7 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     //hdr_t *end = (hdr_t *) heap_end; // Might not work, get last free block on linked list
     //end->prev = h;
     //heap_end = (uint8_t *) h;
+    mark_mem (b_alloc_ptr(h), h->nbytes_alloc);
     h->cksum = hdr_cksum (h);
 }
 
@@ -120,7 +137,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     void *ptr = 0;
 
     demand(heap, not initialized?);
-    trace("allocating %d bytes\n");
+    trace("allocating %d bytes\n", nbytes);
 
     unsigned tot = pi_roundup(nbytes, 8);
     unsigned n = tot + OVERHEAD_NBYTES;
@@ -136,18 +153,18 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     h = (hdr_t *) heap;
     h->nbytes_alloc = nbytes;
     h->nbytes_rem = tot;
-    h->state = FREED;
+    h->state = ALLOCED;
     h->alloc_loc = (src_loc_t) { .file = file, .func = func, .lineno = lineno};
     h->refs_start = 1;
     h->refs_middle = 0;
-    memcpy (b_rz1_ptr (h), SENTINAL, REDZONE);
-    memcpy (b_rz2_ptr (h), SENTINAL, b_rz2_nbytes (h));
+    mark_mem (b_rz1_ptr (h), REDZONE);
+    mark_mem (b_rz2_ptr (h), b_rz2_nbytes (h));
     h->cksum = hdr_cksum (h);
 
     heap += n;
     assert(check_block(h));
     ptr = b_alloc_ptr (h);
-    trace("ckalloc:allocated %d bytes, (tot=%d), ptr=%p\n", nbytes, n, ptr);
+    trace("ckalloc:allocated %d bytes, (total=%d), ptr=%p\n", nbytes, n, ptr);
     return ptr;
 }
 
@@ -164,11 +181,24 @@ int ck_heap_errors(void) {
     unsigned nblks = 0;
 
 
-    for (hdr_t *block = (hdr_t *) heap_start; block != heap; 
+    for (hdr_t *block = (hdr_t *) heap_start; block < (hdr_t *) heap; 
         block = (hdr_t *)(((char *)block) + block->nbytes_alloc + block->nbytes_rem + OVERHEAD_NBYTES))
     {
-        if (!check_block (block))
+        if (!check_hdr(block))
+        {
             nerrors++;
+            nblks++;
+            break;
+        }
+        
+        if (!check_mem(b_rz1_ptr(block), REDZONE, block) || !check_mem(b_rz2_ptr(block), b_rz2_nbytes(block), block))
+            nerrors++;
+        else if (block->state = FREED)
+        {
+            if (!check_free_write (b_alloc_ptr (block), block->nbytes_alloc, block))
+                nerrors++;
+        }
+        
         nblks++;
     }
 

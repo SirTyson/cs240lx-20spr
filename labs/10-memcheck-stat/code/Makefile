@@ -1,6 +1,6 @@
 # if you do "make checkall" it will check all of these.
-# TESTS = part1-test1 part1-test2 part1-test3 part1-test4
-TESTS = part1-test1 
+TESTS = part1-test1 part1-test2 part1-test3 part1-test4
+#TESTS = part1-test1 
 
 # easy way to test everything when you are done.
 # TESTS := $(wildcard ./part*-test*.c)
@@ -61,7 +61,7 @@ $(OBJS): $(DEPS)
 	pi-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
 
 %.check: %.bin
-	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
+	pi-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
 	diff ./$*.test ./$*.out
 	rm ./$*.test
 

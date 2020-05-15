@@ -82,16 +82,16 @@ typedef struct header {
 } while(0)
 
 // shouldn't be in the header.
-// static void inline hdr_print(hdr_t *h) {
-//     trace("\tnbytes=%d\n", h->nbytes_alloc);
-//     src_loc_t *l = &h->alloc_loc;
-//     if(l->file)
-//         trace("\tBlock allocated at: %s:%s:%d\n", l->file, l->func, l->lineno);
+static void inline hdr_print(hdr_t *h) {
+    trace("\tnbytes=%d\n", h->nbytes_alloc);
+    src_loc_t *l = &h->alloc_loc;
+    if(l->file)
+        trace("\tBlock allocated at: %s:%s:%d\n", l->file, l->func, l->lineno);
 
-//     l = &h->free_loc;
-//     if(h->state == FREED && l->file)
-//         trace("\tBlock freed at: %s:%s:%d\n", l->file, l->func, l->lineno);
-// }
+    l = &h->free_loc;
+    if(h->state == FREED && l->file)
+        trace("\tBlock freed at: %s:%s:%d\n", l->file, l->func, l->lineno);
+}
 
 
 // shouldn't be in the header.
