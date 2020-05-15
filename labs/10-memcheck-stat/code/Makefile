@@ -1,5 +1,6 @@
-# add each test here that you want to check.
-TESTS = part1-test1
+# if you do "make checkall" it will check all of these.
+# TESTS = part1-test1 part1-test2 part1-test3 part1-test4
+TESTS = part1-test1 
 
 # easy way to test everything when you are done.
 # TESTS := $(wildcard ./part*-test*.c)
@@ -32,7 +33,7 @@ DEPS := $(MEMMAP) $(LPI) $(LIBM) $(wildcard ./*.h) ./Makefile
 # i *think* order is important.
 LIBS = $(LPI)  
 
-all:  libs $(OBJS) $(TEST_BINARIES) $(TEST_RUN) # $(TEST_CHECK)
+all:  libs $(OBJS) $(TEST_BINARIES) #  $(TEST_RUN) $(TEST_CHECK)
 
 libs: 
 	make -C $(LPP) 
@@ -59,9 +60,10 @@ $(OBJS): $(DEPS)
 %.emit: %.bin
 	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
 
-%.check: 
+%.check: %.bin
 	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
 	diff ./$*.test ./$*.out
+	rm ./$*.test
 
 # not sure if there is a better way: use these fake target to run our
 # checks for everything.
@@ -73,7 +75,7 @@ tags:
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs] 
 
 clean:
-	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin *.elf *.list *.img Makefile.bak  *.d
+	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin *.elf *.list *.img Makefile.bak  *.d *.test
 
 cleanall:
 	make -C ./ clean
