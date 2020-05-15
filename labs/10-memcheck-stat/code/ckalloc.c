@@ -40,7 +40,13 @@ static uint32_t hdr_cksum(hdr_t *h) {
 
 // check the header checksum and that its state == ALLOCED or FREED
 static int check_hdr(hdr_t *h) {
-    unimplemented();
+    if  ((h->state != ALLOCED && h->state != FREED) || h->cksum != hdr_cksum (h))
+    {
+        trace("block %p corrupted at offset %d\n", h, 0);
+        return 0;
+    }
+
+    return 1;
 }
 
 static int check_mem(char *p, unsigned nbytes) {
@@ -51,8 +57,10 @@ static int check_mem(char *p, unsigned nbytes) {
             return 0;
         }
     }
+
     return 1;
 }
+
 static void mark_mem(void *p, unsigned nbytes) {
     memset(p, SENTINAL, nbytes);
 }
@@ -89,12 +97,21 @@ static void hdr_print(hdr_t *h) {
  *  2. allocated block does not pass checks.
  */
 void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
-    hdr_t *h = 0;
+    hdr_t *h = b_addr_to_hdr(addr);
 
     demand(heap, not initialized?);
     trace("freeing %p\n", addr);
-    unimplemented();
     assert(check_block(h));
+    h->free_loc = (src_loc_t) {
+        .file = file,
+        .func = func,
+        .lineno = lineno,
+    };
+    h->state = FREED;
+    //hdr_t *end = (hdr_t *) heap_end; // Might not work, get last free block on linked list
+    //end->prev = h;
+    //heap_end = (uint8_t *) h;
+    h->cksum = hdr_cksum (h);
 }
 
 // check if nbytes + overhead causes an overflow.
@@ -115,13 +132,21 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     if((heap + n) >= heap_end)
         trace_panic("out of memory!  have only %d left, need %d\n", 
             heap_end - heap, n);
+    
+    h = (hdr_t *) heap;
+    h->nbytes_alloc = nbytes;
+    h->nbytes_rem = tot;
+    h->state = FREED;
+    h->alloc_loc = (src_loc_t) { .file = file, .func = func, .lineno = lineno};
+    h->refs_start = 1;
+    h->refs_middle = 0;
+    memcpy (b_rz1_ptr (h), SENTINAL, REDZONE);
+    memcpy (b_rz2_ptr (h), SENTINAL, b_rz2_nbytes (h));
+    h->cksum = hdr_cksum (h);
 
-
-
-    unimplemented();
-    assert(check_hdr(h));
+    heap += n;
     assert(check_block(h));
-
+    ptr = b_alloc_ptr (h);
     trace("ckalloc:allocated %d bytes, (tot=%d), ptr=%p\n", nbytes, n, ptr);
     return ptr;
 }
@@ -139,7 +164,13 @@ int ck_heap_errors(void) {
     unsigned nblks = 0;
 
 
-    unimplemented();
+    for (hdr_t *block = (hdr_t *) heap_start; block != heap; 
+        block = (hdr_t *)(((char *)block) + block->nbytes_alloc + block->nbytes_rem + OVERHEAD_NBYTES))
+    {
+        if (!check_block (block))
+            nerrors++;
+        nblks++;
+    }
 
 
     if(nerrors)

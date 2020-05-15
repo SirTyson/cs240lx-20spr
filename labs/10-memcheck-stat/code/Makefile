@@ -54,11 +54,11 @@ $(OBJS): $(DEPS)
 	$(OCP) $*.elf -O binary $*.bin
 
 %.run: %.bin
-	my-install ./$*.bin
+	pi-install ./$*.bin
 
 # note: this will fail if output does not contain a trace.
 %.emit: %.bin
-	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
+	pi-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
 
 %.check: %.bin
 	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
