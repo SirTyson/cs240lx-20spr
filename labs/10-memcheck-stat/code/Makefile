@@ -1,9 +1,9 @@
 # if you do "make checkall" it will check all of these.
-TESTS = part1-test1 part1-test2 part1-test3 part1-test4
+#TESTS = part1-test1 part1-test2 part1-test3 part1-test4
 #TESTS = part1-test1 
 
 # easy way to test everything when you are done.
-# TESTS := $(wildcard ./part*-test*.c)
+TESTS := $(wildcard ./part*-test*.c)
 
 TESTS := $(patsubst %.c, %, $(TESTS))  
 
@@ -54,14 +54,14 @@ $(OBJS): $(DEPS)
 	$(OCP) $*.elf -O binary $*.bin
 
 %.run: %.bin
-	pi-install ./$*.bin
+	my-install ./$*.bin
 
 # note: this will fail if output does not contain a trace.
 %.emit: %.bin
-	pi-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
+	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
 
 %.check: %.bin
-	pi-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
+	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
 	diff ./$*.test ./$*.out
 	rm ./$*.test
 

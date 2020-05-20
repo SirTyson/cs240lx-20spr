@@ -89,7 +89,7 @@ static void mark_mem(void *p, unsigned nbytes) {
 static int check_block(hdr_t *h) {
     // short circuit the checks.
     return check_hdr(h)
-        && check_mem(b_rz1_ptr(h), REDZONE, h)
+        && check_mem(b_rz1_ptr(h), REDZONE, h) 
         && check_mem(b_rz2_ptr(h), b_rz2_nbytes(h), h);
 }
 
@@ -103,8 +103,7 @@ static int check_block(hdr_t *h) {
 //         printk("[freed @ %s:%s:%d]", l->file, l->func, l->lineno);
 // }
 
-#define ck_error(_h, args...) do { \
-    printk("TRACE:"); hdr_print(_h); printk(args); panic(args); } while(0)
+
 
 /*
  *  give an error if so.
@@ -124,9 +123,6 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
         .lineno = lineno,
     };
     h->state = FREED;
-    //hdr_t *end = (hdr_t *) heap_end; // Might not work, get last free block on linked list
-    //end->prev = h;
-    //heap_end = (uint8_t *) h;
     mark_mem (b_alloc_ptr(h), h->nbytes_alloc);
     h->cksum = hdr_cksum (h);
 }
@@ -152,7 +148,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     
     h = (hdr_t *) heap;
     h->nbytes_alloc = nbytes;
-    h->nbytes_rem = tot;
+    h->nbytes_rem = tot - nbytes;
     h->state = ALLOCED;
     h->alloc_loc = (src_loc_t) { .file = file, .func = func, .lineno = lineno};
     h->refs_start = 1;
@@ -182,7 +178,7 @@ int ck_heap_errors(void) {
 
 
     for (hdr_t *block = (hdr_t *) heap_start; block < (hdr_t *) heap; 
-        block = (hdr_t *)(((char *)block) + block->nbytes_alloc + block->nbytes_rem + OVERHEAD_NBYTES))
+         block = (hdr_t *)(((char *)block) + block->nbytes_alloc + block->nbytes_rem + OVERHEAD_NBYTES))
     {
         if (!check_hdr(block))
         {
@@ -193,7 +189,7 @@ int ck_heap_errors(void) {
         
         if (!check_mem(b_rz1_ptr(block), REDZONE, block) || !check_mem(b_rz2_ptr(block), b_rz2_nbytes(block), block))
             nerrors++;
-        else if (block->state = FREED)
+        else if (block->state == FREED)
         {
             if (!check_free_write (b_alloc_ptr (block), block->nbytes_alloc, block))
                 nerrors++;
