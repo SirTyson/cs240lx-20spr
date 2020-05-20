@@ -25,7 +25,7 @@ static struct heap_info info;
 // we could warn if the pointer is within some amount of slop
 // so that you can detect some simple overruns?
 static int in_heap(void *p) {
-    unimplemented();
+    return p >= info.heap_start && (uint8_t *)p <= info.heap_end;
 }
 
 // given potential address <addr>, returns:
@@ -40,12 +40,21 @@ static hdr_t *is_ptr(uint32_t addr) {
     void *p = (void*)addr;
     
     if(!in_heap(p))
-        return 0;
+        return NULL;
 
-    unimplemented();
+    for (hdr_t* hdr = ck_first_hdr(); hdr; hdr = ck_next_hdr(hdr)) 
+    {
+        // If p is before current header, already passed and not found
+        if ((hdr_t *)p < hdr)
+            return NULL;
+        // If p is in current alloacted block
+        else if ((hdr_t *)p >= b_addr_to_hdr(hdr) 
+                 && (char *)p <= ((char *)b_addr_to_hdr(hdr) + hdr->nbytes_alloc))
+            return hdr;
+    }
 
     // output("could not find pointer %p\n", addr);
-    return 0;
+    return NULL;
 }
 
 // mark phase:
@@ -65,9 +74,25 @@ static void mark(uint32_t *p, uint32_t *e) {
     assert(aligned(p,4));
     assert(aligned(e,4));
 
-    unimplemented();
-}
+    for (;p <= e; p++)
+    {
+        hdr_t *block = is_ptr((uint32_t)p);
+        if (!block) continue;
+        (block->mark)++;
+        if (p == (uint32_t *)b_alloc_ptr(block))
+            (block->refs_start)++;
+        else 
+            (block->refs_middle)++;
+        update_checksum(block);
 
+        // If block has not yet been explored
+        if (block->mark == 1)
+        {
+            mark((uint32_t *)b_alloc_ptr(block),
+                    (uint32_t *)((char *)b_alloc_ptr(block) + block->nbytes_rem));
+        }
+    }
+}
 
 // do a sweep, warning about any leaks.
 //
@@ -77,9 +102,16 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("---------------------------------------------------------\n");
 	output("checking for leaks:\n");
 
-    unimplemented();
-
-
+    for (hdr_t *block = ck_first_hdr(); block; block = ck_next_hdr(block))
+    {
+        nblocks++;
+        if (block->state == FREED) 
+            continue;
+        if (!block->mark)
+            errors++;
+        else if (block->refs_start == 0)
+            maybe_errors++;
+    }
 
 	trace("\tGC:Checked %d blocks.\n", nblocks);
 	if(!errors && !maybe_errors)

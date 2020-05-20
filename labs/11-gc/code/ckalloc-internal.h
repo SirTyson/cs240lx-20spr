@@ -36,6 +36,7 @@
  *
  *    easy to enumerate all blocks using the header information.
  */
+
 typedef enum {  ALLOCED = 11, FREED } state_t;
 
 typedef struct {
@@ -148,6 +149,9 @@ static void inline hdr_print(hdr_t *h) {
 hdr_t *ck_first_hdr(void);
 // returns pointer to next hdr or 0 if none.
 hdr_t *ck_next_hdr(hdr_t *p);
+
+// Recompute checksum, must be done everytime hdr_t changed
+void update_checksum(hdr_t *p);
 
 
 // info about the heap useful for checking.

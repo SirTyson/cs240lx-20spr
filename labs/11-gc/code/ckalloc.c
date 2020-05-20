@@ -5,6 +5,8 @@
 // simplistic heap management: a single, contiguous heap given to us by calling
 // ck_init
 static uint8_t *heap = 0, *heap_end, *heap_start;
+static unsigned nbytes_freed = 0;
+static unsigned nbytes_alloced = 0;
 
 void ck_init(void *start, unsigned n) {
     assert(aligned(heap_start, 8));
@@ -98,6 +100,7 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     };
     h->state = FREED;
     mark_mem (b_alloc_ptr(h), h->nbytes_alloc);
+    nbytes_freed += h->nbytes_alloc;
     h->cksum = hdr_cksum (h);
 }
 
@@ -135,6 +138,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     assert(check_block(h));
     ptr = b_alloc_ptr (h);
     trace("ckalloc:allocated %d bytes, (total=%d), ptr=%p\n", nbytes, n, ptr);
+    nbytes_alloced += nbytes;
     return ptr;
 }
 
@@ -187,4 +191,17 @@ hdr_t *ck_first_hdr(void) {
 hdr_t *ck_next_hdr(hdr_t *p) {
     hdr_t *hdr = (hdr_t *) (((char *)p) + p->nbytes_alloc + p->nbytes_rem + OVERHEAD_NBYTES);
     return hdr < (hdr_t *) heap && check_hdr(hdr) ? hdr : NULL;
+}
+
+void update_checksum(hdr_t *p) {
+    p->cksum = hdr_cksum(p);
+}
+
+struct heap_info heap_info(void) {
+    return (struct heap_info) {
+        .heap_start = (void *)heap_start,
+        .heap_end = (void *)heap_end,
+        .nbytes_freed = nbytes_freed,
+        .nbytes_alloced = nbytes_alloced,
+    };
 }
