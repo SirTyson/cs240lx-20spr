@@ -93,6 +93,7 @@ static void mark(uint32_t *p, uint32_t *e) {
         {
             mark((uint32_t *)b_alloc_ptr(block),
                     (uint32_t *)((char *)b_alloc_ptr(block) + block->nbytes_alloc));
+
         }
     }
 }

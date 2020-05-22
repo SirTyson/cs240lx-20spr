@@ -41,7 +41,7 @@ $(OBJS): $(DEPS)
 	$(OCP) $*.elf -O binary $*.bin
 
 run:
-	pi-install /dev/ttyUSB1 ./$(NAME).bin
+	my-install /dev/ttyUSB1 ./$(NAME).bin
 
 tags: 
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs]

@@ -164,6 +164,16 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     return ptr;
 }
 
+hdr_t *ck_first_hdr(void) {
+    hdr_t *hdr = (hdr_t *) heap_start;
+    return check_hdr(hdr) ? hdr : NULL;
+}
+
+hdr_t *ck_next_hdr(hdr_t *p) {
+    hdr_t *hdr = (hdr_t *) (((char *)p) + p->nbytes_alloc + p->nbytes_rem + OVERHEAD_NBYTES);
+    return hdr < (hdr_t *) heap && check_hdr(hdr) ? hdr : NULL;
+}
+
 // integrity check the allocated / freed blocks in the heap
 // if the header of a block is corrupted, just return.
 // return the error count.
@@ -177,8 +187,7 @@ int ck_heap_errors(void) {
     unsigned nblks = 0;
 
 
-    for (hdr_t *block = (hdr_t *) heap_start; block < (hdr_t *) heap; 
-         block = (hdr_t *)(((char *)block) + block->nbytes_alloc + block->nbytes_rem + OVERHEAD_NBYTES))
+    for (hdr_t *block = ck_first_hdr(); block; block = ck_next_hdr(block))
     {
         if (!check_hdr(block))
         {

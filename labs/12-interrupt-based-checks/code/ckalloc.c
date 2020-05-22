@@ -1,3 +1,5 @@
+void ckalloc_start(void) {}
+
 #include "rpi.h"
 #include "libc/helper-macros.h"
 #include "ckalloc-internal.h"
@@ -26,7 +28,7 @@ static uint32_t hdr_cksum(hdr_t *h) {
 
 // check the header checksum and that its state == ALLOCED or FREED
 static int check_hdr(hdr_t *h) {
-    if  ((h->state != ALLOCED && h->state != FREED) || h->cksum != hdr_cksum(h)) 
+    if  ((h->state != ALLOCED && h->state != FREED) || h->cksum != hdr_cksum (h))
     {
         ck_error(h, "block %p corrupted at offset %d\n", h, 0);
         return 0;
@@ -205,3 +207,5 @@ struct heap_info heap_info(void) {
         .nbytes_alloced = nbytes_alloced,
     };
 }
+
+void ckalloc_end(void) {}

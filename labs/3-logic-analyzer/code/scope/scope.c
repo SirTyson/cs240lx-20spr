@@ -60,7 +60,7 @@ void dump_samples(log_ent_t *l, unsigned n, unsigned period) {
 }
 
 void notmain(void) {
-    init_gpio ();
+    //init_gpio ();
     int pin = 21;
     gpio_set_input(pin);
     cycle_cnt_init();
