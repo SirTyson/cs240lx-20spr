@@ -27,7 +27,7 @@ void * test(void) {
     memset(global_p, 0, 4);
     
     void *p= ckalloc(4);
-
+    printk("%x\n", &p);
     check_no_leak();
 
     // have to return p or the compiler gets rid of it.

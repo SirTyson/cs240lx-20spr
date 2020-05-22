@@ -25,7 +25,8 @@ static struct heap_info info;
 // we could warn if the pointer is within some amount of slop
 // so that you can detect some simple overruns?
 static int in_heap(void *p) {
-    return p >= info.heap_start && (uint8_t *)p <= info.heap_end;
+    info = heap_info();
+    return p >= info.heap_start && p <= info.heap_end;
 }
 
 // given potential address <addr>, returns:
@@ -37,7 +38,7 @@ static int in_heap(void *p) {
 // XXX: you'd want to abstract this some so that you can use it with
 // other allocators.  our leak/gc isn't really allocator specific.
 static hdr_t *is_ptr(uint32_t addr) {
-    void *p = (void*)addr;
+    void *p = (void *)addr;
     
     if(!in_heap(p))
         return NULL;
@@ -45,11 +46,11 @@ static hdr_t *is_ptr(uint32_t addr) {
     for (hdr_t* hdr = ck_first_hdr(); hdr; hdr = ck_next_hdr(hdr)) 
     {
         // If p is before current header, already passed and not found
-        if ((hdr_t *)p < hdr)
+        if (p < b_alloc_ptr(hdr))
             return NULL;
         // If p is in current alloacted block
-        else if ((hdr_t *)p >= b_addr_to_hdr(hdr) 
-                 && (char *)p <= ((char *)b_addr_to_hdr(hdr) + hdr->nbytes_alloc))
+        else if (p >= b_alloc_ptr(hdr) 
+                 && p <= (void *)((char *)b_alloc_ptr(hdr) + hdr->nbytes_alloc))
             return hdr;
     }
 
@@ -76,10 +77,12 @@ static void mark(uint32_t *p, uint32_t *e) {
 
     for (;p <= e; p++)
     {
-        hdr_t *block = is_ptr((uint32_t)p);
-        if (!block) continue;
+        
+        hdr_t *block = is_ptr(*p);
+        if (!block)
+            continue;
         (block->mark)++;
-        if (p == (uint32_t *)b_alloc_ptr(block))
+        if (*p == (uint32_t)b_alloc_ptr(block))
             (block->refs_start)++;
         else 
             (block->refs_middle)++;
@@ -89,7 +92,8 @@ static void mark(uint32_t *p, uint32_t *e) {
         if (block->mark == 1)
         {
             mark((uint32_t *)b_alloc_ptr(block),
-                    (uint32_t *)((char *)b_alloc_ptr(block) + block->nbytes_rem));
+                    (uint32_t *)((char *)b_alloc_ptr(block) + block->nbytes_alloc));
+
         }
     }
 }
@@ -108,9 +112,15 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
         if (block->state == FREED) 
             continue;
         if (!block->mark)
+        {
+            trace("ERROR:GC:DEFINITE LEAK of %x\n", b_alloc_ptr(block));
             errors++;
-        else if (block->refs_start == 0)
+        }
+        else if (block->refs_start == 0 && warn_no_start_ref_p)
+        {
+            trace("ERROR:GC:MAYBE LEAK of %x (no pointer to the start)\n", b_alloc_ptr(block));
             maybe_errors++;
+        }
     }
 
 	trace("\tGC:Checked %d blocks.\n", nblocks);
@@ -138,7 +148,6 @@ static void mark_all(void) {
 
     // get start and end of heap so we can do quick checks
     struct heap_info i = heap_info();
-    unimplemented();
 
 	// pointers can be on the stack, in registers, or in the heap itself.
 
@@ -146,15 +155,15 @@ static void mark_all(void) {
     uint32_t regs[16];
     // should kill caller-saved registers
     dump_regs(regs);
-    assert(regs[0] == (uint32_t)regs[0]);
-
-    unimplemented();
+    assert(regs == (uint32_t *)regs[0]);
     mark(regs, &regs[14]);
 
     // mark the stack: we are assuming only a single
     // stack.  note: stack grows down.
     uint32_t *stack_top = (void*)STACK_ADDR;
-    unimplemented();
+    uint32_t *stack_bottom = (void *)regs[13];
+
+    mark(stack_bottom, stack_top);
 
     // these symbols are defined in our memmap
 	extern uint32_t __bss_start__, __bss_end__;
@@ -223,11 +232,20 @@ static unsigned sweep_free(void) {
 	output("---------------------------------------------------------\n");
 	output("compacting:\n");
 
-    unimplemented();
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
+        nbytes_freed += h->nbytes_alloc;
+        if (h->state == ALLOCED && h->refs_start == 0 && h->refs_middle == 0) {
+            void *ptr = b_alloc_ptr(h);
+            // trace("\tGC:DEFINITE LEAK of %x\n", ptr);
+            trace("GC:FREEing ptr=%x\n", ptr);
+            ckfree(ptr);
+            nfreed++;
+        }
 
+        nblocks++;
+    }
     // i used this when freeing.
-    // trace("GC:FREEing ptr=%x\n", ptr);
-    // ckfree(ptr);
+
 
 	trace("\tGC:Checked %d blocks, freed %d, %d bytes\n", nblocks, nfreed, nbytes_freed);
 
