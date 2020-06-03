@@ -1,0 +1,10 @@
+set colorcolumn=110                                                             
+highlight ColorColumn ctermbg=darkgray                                         
+set tabstop=4                                                                  
+set softtabstop=2                                                              
+set shiftwidth=4 
+
+let g:ycm_global_ycm_extra_conf = '.ycm_extra_conf.py'
+let g:ycm_semantic_triggers =  {
+  \   'c': ['->', '.'],
+  \ }

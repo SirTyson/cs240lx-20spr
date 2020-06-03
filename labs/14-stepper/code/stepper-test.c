@@ -76,7 +76,7 @@ void music_remote(){
     cycle_cnt_init();
     init_ir_interrupt(pin);
 
-    //for (;;)
+    for (;;)
         play(stepper);
 
     gpio_pud_off(pin);

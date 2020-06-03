@@ -366,7 +366,7 @@ typedef enum {
     C,
     D,
     G,
-    Gf,
+    Gs,
     F,
 } notes_t;
 
@@ -377,37 +377,62 @@ void play(stepper_t * stepper) {
     // A
     case BUTTON1:
         printk("Button1 pressed\n");
-        for(int i = 0; i < 100; i++){
+        for(int i = 0; i < 60; i++){
             stepper_get_position_in_steps(stepper);
             stepper_step_forward(stepper);
-            delay_us(2250);
+            delay_us(4550);
         }
         break;
 
+    // C
     case BUTTON2:
         printk("Button2 pressed\n");
+        for(int i = 0; i < 60; i++){
+            stepper_get_position_in_steps(stepper);
+            stepper_step_forward(stepper);
+            delay_us(3800);
+        }
         break;
     
+    // D
     case BUTTON3:
         printk("Button3 pressed\n");
-        break;
-
-    // D
-    case BUTTON4:
-        printk("Button4 pressed\n");
-        for(int i = 0; i < 80; i++){
+        for(int i = 0; i < 60; i++){
             stepper_get_position_in_steps(stepper);
             stepper_step_forward(stepper);
             delay_us(3360);
         }
+
         break;
 
+    // Gs
+    case BUTTON4:
+        printk("Button4 pressed\n");
+        for(int i = 0; i < 60; i++){
+            stepper_get_position_in_steps(stepper);
+            stepper_step_forward(stepper);
+            delay_us(4850);
+        }
+        break;
+
+    // G
     case BUTTON5:
         printk("Button5 pressed\n");
+        for(int i = 0; i < 60; i++){
+            stepper_get_position_in_steps(stepper);
+            stepper_step_forward(stepper);
+            delay_us(5050);
+        }
         break;
     
+    // F
     case BUTTON6:
         printk("Button6 pressed\n");
+        for(int i = 0; i < 140; i++){
+            stepper_get_position_in_steps(stepper);
+            stepper_step_forward(stepper);
+            delay_us(2810);
+        }
         break;
 
     default:

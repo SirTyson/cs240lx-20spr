@@ -5,7 +5,7 @@
 #include "timer-interrupt.h"
 
 
-#define INTERUPT_TIME 10
+#define INTERUPT_TIME 5
 
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
@@ -32,6 +32,8 @@ static int in_range(uint32_t addr, uint32_t b, uint32_t e) {
 // if <pc> is in the range we want to check and not in the 
 // range we cannot check, return 1.
 int (ck_mem_checked_pc)(uint32_t pc) {
+    //printk("PC: %x START: %x END: %x\n", pc, start_check, end_check);
+    //printk("PC: %x START_PROTEC: %x END_PROTEC: %x\n", pc, start_nocheck, end_nocheck);
     return in_range(pc, start_check, end_check) 
                 && !in_range(pc, start_nocheck, end_nocheck);
 }
@@ -58,13 +60,13 @@ void ck_mem_interrupt(uint32_t pc) {
     // we don't know what the user was doing.
     dev_barrier();
 
-    if (check_on) {
+    //printk("*PC: %x\n", *((uint32_t*)pc));
         if (ck_mem_checked_pc(pc)) {
             checked++;
             ck_heap_errors();
-        } else
+        } else {
             skipped++;
-    }
+        }
         
     // we don't know what the user was doing.
     dev_barrier();
@@ -79,12 +81,9 @@ void ck_mem_init(void) {
     assert(in_range((uint32_t)ckalloc, start_nocheck, end_nocheck));
     assert(in_range((uint32_t)ckfree, start_nocheck, end_nocheck));
     assert(!in_range((uint32_t)printk, start_nocheck, end_nocheck));
-
     // Enable timer interupts
     int_init();
     timer_interrupt_init(INTERUPT_TIME);
-    system_enable_interrupts();
-    init_p = 1;
 }
 
 // only check pc addresses [start,end)
@@ -98,7 +97,7 @@ void ck_mem_set_range(void *start, void *end) {
 void ck_mem_on(void) {
     assert(init_p && !check_on);
     check_on = 1;
-
+    system_enable_interrupts();
     //ck_heap_errors();
 }
 
@@ -107,6 +106,7 @@ void ck_mem_off(void) {
     assert(init_p && check_on);
 
     check_on = 0;
+    system_disable_interrupts();
     //ck_heap_errors();
 }
 
@@ -122,8 +122,7 @@ void interrupt_vector(unsigned pc) {
     if((pending & RPI_BASIC_ARM_TIMER_IRQ) == 0)
         return;
 
-    // Clear timer interupt
-    PUT32(arm_timer_IRQClear, 1);
+
 
     dev_barrier();  
     // Interupt count  
@@ -138,4 +137,7 @@ void interrupt_vector(unsigned pc) {
     period = last_clk ? clk - last_clk : 0;
     period_sum += period;
     last_clk = clk;
+
+    // Clear timer interupt
+    PUT32(arm_timer_IRQClear, 1);
 }
