@@ -3,9 +3,12 @@
 #   - "make emitall" it emit .outs for all programs in TESTS
 #   - "make runall" it will run all programs in TESTS
 # if you want to just grab all tests do:
-TESTS = ./tests/part2-test6
-TESTS := $(wildcard ./tests/part2*-test*.c)
-TESTS := tsop322.c
+TESTS = ./tests/test1.c
+
+# uncomment this after test1.
+SYS_OBJS = cp14-debug.o interrupts-asm.o
+
+# TESTS := $(wildcard ./tests/test*.c)
 
 # part1-test2 part1-test3 part1-test4
 # part1-test1 part1-test2 part1-test3 part1-test4
@@ -23,7 +26,8 @@ TESTS := $(patsubst %.c, %, $(TESTS))
 GREP_STR := 'TRACE:\|ERROR:\|PANIC:' 
 GREP_STR := 'GC:\|ERROR:\|PANIC:' 
 
-# SYS_OBJS = ckalloc.o ck-gc.o gc-asm.o
+# ALL_ASM := $(wildcard ./*.S)
+# $(patsubst %.S, %.o, $(ALL_ASM))  
 
 ALL_SOURCES := $(wildcard ./*.c)
 OBJS := $(patsubst %.c, %.o, $(ALL_SOURCES))  $(SYS_OBJS)
@@ -42,7 +46,11 @@ endif
 
 include $(CS240LX_2021_PATH)/libpi/includes.mk
 
-CFLAGS += -Wno-unused-function -Wno-unused-variable 
+CFLAGS += -Wno-unused-function -Wno-unused-variable -fno-toplevel-reorder -Werror 
+
+# -fno-omit-frame-pointer -mpoke
+
+# -fno-reorder-functions
 
 # add all the .h's as dependencies, libpi and the makefile.
 DEPS := $(MEMMAP) $(LPI) $(LIBM) $(wildcard ./*.h) ./Makefile 
@@ -50,7 +58,7 @@ DEPS := $(MEMMAP) $(LPI) $(LIBM) $(wildcard ./*.h) ./Makefile
 # i *think* order is important.
 LIBS = $(LPI)  
 
-all:  libs $(OBJS) $(TEST_BINARIES)#  $(TEST_RUN) # $(TEST_CHECK)
+all:  libs $(OBJS) $(TEST_BINARIES) $(TEST_RUN) # $(TEST_CHECK)
 
 update:
 	cp part1-test*.c part1-test*.out ../code
@@ -98,6 +106,7 @@ tags:
 
 clean:
 	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin *.elf *.list *.img Makefile.bak  *.d *.test
+	make -C ./tests clean
 
 cleanall:
 	make -C ./ clean
