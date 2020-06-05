@@ -75,6 +75,7 @@ struct debug_id {
 
 // 13-5
 cp14_asm_get(cp14_debug_id, c0, 0)
+cp14_asm_get(cp14_status, c1, 0b0)
 
 /********************************************************************
  * part 1: set a watchpoint on 0 (test2.c/test3.c)
@@ -82,12 +83,8 @@ cp14_asm_get(cp14_debug_id, c0, 0)
 #include "bit-support.h"
 
 cp14_asm_get(wfar, c6, 0)
-
-cp_asm_get(dfsr, p15, 0, c3, c0, 0)
-// see 3-65 (page 198 in my arm1176.pdf)
-// static inline uint32_t dfsr_get(void) {
-//     unimplemented();
-// }
+cp_asm_get(dfsr, p15, 0, c5, c0, 0)
+cp_asm_get(far, p15, 0, c6, c0, 0)
 
 // was watchpoint debug fault caused by a load?
 static inline unsigned datafault_from_ld(void) {
@@ -100,7 +97,8 @@ static inline unsigned datafault_from_st(void) {
 
 static inline unsigned was_debugfault_r(uint32_t r) {
     // "these bits are not set on debug event.
-    unimplemented();
+    uint32_t status = dfsr_get();
+    return !bit_isset(status, 10) && bits_eq(status, 0, 3, 0b0010);
 }
 
 // are we here b/c of a datafault?
@@ -109,14 +107,10 @@ static inline unsigned was_debug_datafault(void) {
     if(!was_debugfault_r(r))
         panic("impossible: should only get datafaults\n");
     // 13-11: watchpoint occured: bits [5:2] == 0b0010
-    unimplemented();
+    uint32_t dscr = cp14_status_get();
+    uint32_t debug_entry = (dscr & (uint32_t)(0b1111 << 2)) >> 2;
+    return debug_entry == 1 || debug_entry == 2;
 }
-
-// 3-68: fault address register: hold the MVA that the fault occured at.
-static inline uint32_t far_get(void) {
-    unimplemented();
-}
-
 
 // client supplied fault handler: give a pointer to the registers so 
 // the client can modify them (for the moment pass NULL)
@@ -134,21 +128,13 @@ void cp14_enable(void);
  * part 2: set a breakpoint on 0 (test4.c) / foo (test5.c)
  */
 
-
-// 3-66: instuction fault status register: hold source of last instruction
-// fault.
-static inline uint32_t ifsr_get(void) {
-    unimplemented();
-}
-
-// 3-69: holds address of function that caused prefetch fault.
-static inline uint32_t ifar_get(void) {
-    unimplemented();
-}
+cp_asm_get(ifsr, p15, 0, c5, c0, 1)
+cp_asm_get(ifar, p15, 0, c6, c0, 2)
 
 // was this a debug instruction fault?
 static inline unsigned was_debug_instfault(void) {
-    unimplemented();
+    uint32_t status = ifsr_get();
+    return !bit_isset(status, 10) && bits_eq(status, 0, 3, 0b0010);
 }
 
 // set a breakpoint at <addr>: call handler when the fault happens.

@@ -15,7 +15,9 @@ static handler_t watchpt_handler0 = 0;
 
 cp14_asm(cp14_wvr0, c0, 0b110)
 cp14_asm(cp14_wcr0, c0, 0b111)
-cp14_asm(cp14_status, c1, 0b0)
+cp14_asm(cp14_bcr0, c0, 0b101)
+cp14_asm(cp14_bvr0, c0, 0b100)
+cp14_asm_set(cp14_status, c1, 0b0)
 
 // set the first watchpoint: calls <handler> on debug fault.
 void watchpt_set0(void *_addr, handler_t handler) {
@@ -29,7 +31,7 @@ void watchpt_set0(void *_addr, handler_t handler) {
     wcr0 &= ~((uint32_t)(1 << 20));
     wcr0 &= ~((uint32_t)(0b11 << 14));  // Might need to be 15
     
-    wcr0 |= 0b1111 << 5;
+    wcr0 |= 0b1000 << 5;
     wcr0 |= 0b11 << 3;
     wcr0 |= 0b11 << 1;
     wcr0 |= 1;
@@ -40,7 +42,7 @@ void watchpt_set0(void *_addr, handler_t handler) {
 }
 
 void interrupt_vector(unsigned pc){
-    data_abort_vector(pc);
+    panic("HIT WRONG INTERRUPT HANDLER\n");
 }
 
 // check for watchpoint fault and call <handler> if so.
@@ -92,10 +94,6 @@ void cp14_enable(void) {
 
 static handler_t brkpt_handler0 = 0;
 
-static inline uint32_t cp14_bvr0_get(void) { unimplemented(); }
-static inline void cp14_bvr0_set(uint32_t r) { unimplemented(); }
-static inline uint32_t cp14_bcr0_get(void) { unimplemented(); }
-static inline void cp14_bcr0_set(uint32_t r) { unimplemented(); }
 
 static unsigned bvr_match(void) { return 0b00 << 21; }
 static unsigned bvr_mismatch(void) { return 0b10 << 21; }
@@ -103,14 +101,34 @@ static unsigned bvr_mismatch(void) { return 0b10 << 21; }
 static inline uint32_t brkpt_get_va0(void) {
     return cp14_bvr0_get();
 }
+
 static void brkpt_disable0(void) {
-    unimplemented();
+    uint32_t bcr0 = cp14_bcr0_get();
+    bcr0 &= (uint32_t) -1;              // Clear BCR[0]
+    cp14_bcr0_set(bcr0);
+    prefetch_flush();
 }
 
 // 13-16
 // returns the 
 void brkpt_set0(uint32_t addr, handler_t handler) {
-    unimplemented();
+    uint32_t bcr0 = cp14_bcr0_get();
+    bcr0 &= (uint32_t) -1;              // Clear BCR[0]
+    cp14_bcr0_set(bcr0);
+
+    cp14_bvr0_set(addr);
+
+    bcr0 = bits_clr(bcr0, 21, 22); // Set address mode to match
+    bcr0 = bit_clr(bcr0, 20);      // Disable Linking
+    bcr0 = bits_clr(bcr0, 14, 15); // Break in secure and non-secure world
+    bcr0 = bits_set(bcr0, 5, 8, 1);   // Break for bytes within +0 to +4
+    bcr0 = bits_set(bcr0, 1, 2, 1);   // Activated under all priveldges
+    bcr0 = bit_set(bcr0, 0);       // Enable breakpoint
+
+    cp14_bcr0_set(bcr0);
+
+    prefetch_flush();
+    brkpt_handler0 = handler;
 }
 
 // if get a breakpoint call <brkpt_handler0>
