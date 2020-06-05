@@ -11,34 +11,36 @@
 static handler_t watchpt_handler0 = 0;
 
 // prefetch flush.
-#define prefetch_flush() unimplemented()
+#define prefetch_flush() asm volatile ("mcr p15,0, r0, c7,c5,4")
 
-// cp14_asm_get(wfar, c6, 0)
-static inline uint32_t cp14_wcr0_get(void) {
-    unimplemented();
-}
-static inline void cp14_wcr0_set(uint32_t r) {
-    unimplemented();
-}
-
-static inline uint32_t cp14_wvr0_get(void) { unimplemented(); }
-static inline void cp14_wvr0_set(uint32_t r) { unimplemented(); }
-
-static inline uint32_t cp14_status_get(void) {
-    unimplemented();
-}
-
-static inline void cp14_status_set(uint32_t v) {
-    unimplemented();
-}
-
+cp14_asm(cp14_wvr0, c0, 0b110)
+cp14_asm(cp14_wcr0, c0, 0b111)
+cp14_asm(cp14_status, c1, 0b0)
 
 // set the first watchpoint: calls <handler> on debug fault.
 void watchpt_set0(void *_addr, handler_t handler) {
-    unimplemented();
+
+    uint32_t wcr0 = cp14_wcr0_get();
+    wcr0 &= (uint32_t) -1;              // Clear WCR[0]
+    cp14_wcr0_set(wcr0);
+
+    cp14_wvr0_set((uint32_t) _addr);
+
+    wcr0 &= ~((uint32_t)(1 << 20));
+    wcr0 &= ~((uint32_t)(0b11 << 14));  // Might need to be 15
+    
+    wcr0 |= 0b1111 << 5;
+    wcr0 |= 0b11 << 3;
+    wcr0 |= 0b11 << 1;
+    wcr0 |= 1;
+    cp14_wcr0_set(wcr0);
 
     prefetch_flush();
     watchpt_handler0 = handler;
+}
+
+void interrupt_vector(unsigned pc){
+    data_abort_vector(pc);
 }
 
 // check for watchpoint fault and call <handler> if so.
@@ -75,7 +77,9 @@ void cp14_enable(void) {
 
     // for the core to take a debug exception, monitor debug mode has to be both 
     // selected and enabled --- bit 14 clear and bit 15 set.
-    unimplemented();
+    uint32_t dscr = cp14_status_get();
+    dscr |= 1 << 15;
+    cp14_status_set(dscr);
 
     prefetch_flush();
     // assert(!cp14_watchpoint_occured());

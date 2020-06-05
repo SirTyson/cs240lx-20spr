@@ -3,12 +3,13 @@
 #   - "make emitall" it emit .outs for all programs in TESTS
 #   - "make runall" it will run all programs in TESTS
 # if you want to just grab all tests do:
-TESTS = ./tests/test1.c
+#TESTS = ./tests/test1.c
+
 
 # uncomment this after test1.
 SYS_OBJS = cp14-debug.o interrupts-asm.o
 
-# TESTS := $(wildcard ./tests/test*.c)
+TESTS := $(wildcard ./tests/test*.c)
 
 # part1-test2 part1-test3 part1-test4
 # part1-test1 part1-test2 part1-test3 part1-test4

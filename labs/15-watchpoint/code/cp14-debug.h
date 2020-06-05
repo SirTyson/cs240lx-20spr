@@ -32,11 +32,12 @@
                             MK_STR(Crn) ", "                            \
                             MK_STR(Crm) ", "                            \
                             MK_STR(opcode_2) :: "r" (v));               \
+        prefetch_flush();                                               \
     }
 
 #define cp_asm_get(fn_name, coproc, opcode_1, Crn, Crm, opcode_2)       \
     static inline uint32_t fn_name ## _get(void) {                      \
-        uint32_t ret;                                                   \
+        uint32_t ret = 0;                                                   \
         asm volatile ("mrc " MK_STR(coproc) ", "                        \
                              MK_STR(opcode_1) ", "                      \
                              "%0, "                                     \
@@ -73,26 +74,24 @@ struct debug_id {
 };
 
 // 13-5
-static inline unsigned cp14_debug_id_get(void) {
-    unimplemented();
-}
+cp14_asm_get(cp14_debug_id, c0, 0)
 
 /********************************************************************
  * part 1: set a watchpoint on 0 (test2.c/test3.c)
  */
 #include "bit-support.h"
 
-static inline uint32_t wfar_get(void) { unimplemented(); }
-static inline uint32_t dscr_get(void) { unimplemented(); }
+cp14_asm_get(wfar, c6, 0)
 
+cp_asm_get(dfsr, p15, 0, c3, c0, 0)
 // see 3-65 (page 198 in my arm1176.pdf)
-static inline uint32_t dfsr_get(void) {
-    unimplemented();
-}
+// static inline uint32_t dfsr_get(void) {
+//     unimplemented();
+// }
 
 // was watchpoint debug fault caused by a load?
 static inline unsigned datafault_from_ld(void) {
-    unimplemented();
+    return !(dfsr_get() & (1 << 11));
 }
 // ...  by a store?
 static inline unsigned datafault_from_st(void) {
