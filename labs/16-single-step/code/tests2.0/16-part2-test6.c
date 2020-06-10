@@ -1,12 +1,11 @@
 // trivial check example: increments variable without having a lock.
 // will fail.
 #include "check-interleave.h"
-#include "sys-lock.h"
+#include "pi-sys-lock.h"
 
 // trivial counter.   broken.
 static volatile int cnt = 0;
-static lock_t l;
-static volatile int B_retry = 0;
+static pi_lock_t l;
 
 static void cnt_A(checker_t *c) { 
     if(!sys_lock_try(&l))
@@ -14,27 +13,19 @@ static void cnt_A(checker_t *c) {
     cnt++; 
     sys_unlock(&l);
 } 
-static void cnt_B(checker_t *c) { 
+static int cnt_B(checker_t *c) { 
     if(!sys_lock_try(&l))
-        B_retry = 1;
-    else {
-        cnt++; 
-        sys_unlock(&l);
-    }
+        return 0;
+    cnt++; 
+    sys_unlock(&l);
+    return 1;
 }
 
 static void cnt_init(checker_t *c) { 
     cnt = 0; 
-    B_retry = 0;
     sys_lock_init(&l);
 }
 static int  cnt_check(checker_t *c) { 
-    if(B_retry) {
-        B_retry = 0;
-        assert(l == 0);
-        c->B(c);
-        assert(!B_retry);
-    }
     return cnt == 2; 
 }
 
@@ -54,9 +45,9 @@ void notmain(void) {
 
     struct checker c = cnt_mk_checker();
     int n;
-    if(check(&c))
-        panic("check should have failed!\n");
+    if(!check(&c))
+        panic("check should not have failed!\n");
     else 
-        exit_success("check failed as it should have, ntrials=%d, nerrors=%d\n", 
+        exit_success("check succeeded as it should have, ntrials=%d, nerrors=%d\n", 
                 c.ntrials, c.nerrors);
 }
