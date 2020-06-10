@@ -3,6 +3,7 @@
 
 #include "rpi-interrupts.h"  // for cpsr_get, cpsr_set
 #include "rpi-constants.h"  // for the modes.
+#include "bit-support.h"
 
 static inline int mode_legal(unsigned mode) {
     return mode == USER_MODE

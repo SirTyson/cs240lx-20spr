@@ -6,6 +6,7 @@
 #include "rpi-interrupts.h"
 #include "rpi-constants.h"
 #include "cp14-debug.h"
+#include "cpsr-util.h"
 
 typedef struct checker { 
     /************************************************************

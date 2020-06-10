@@ -16,6 +16,7 @@ static unsigned num_steppers = 0;
 void stepper_int_handler(unsigned pc) {
     // check and clear timer interrupt
     dev_barrier();
+    printk("PC: %x\n", pc);
     unsigned pending = GET32(IRQ_basic_pending);
     if((pending & RPI_BASIC_ARM_TIMER_IRQ) == 0)
         return;

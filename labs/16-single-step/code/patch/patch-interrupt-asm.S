@@ -1,8 +1,13 @@
 @ arguments:
 @   r0 = the cpsr value to set.
 @   r1 = the routine to call
-MK_FN(user_trampoline_no_ret)
+MK_FN(user_trampoline_no_ret):
     @ put your code here.
+    mov r2, sp @ store sp in 
+    mrs r0, cpsr
+    mov sp, r2
+    bx r1
+
 
     @ fail if they return.
     bl   brk_no_ret_error
@@ -19,7 +24,7 @@ MK_FN(user_trampoline_no_ret)
 @ maybe we should just have a stack pointer switch routine?   the
 @ trouble with this is that we need to do a system call to change
 @ to super mode.  i don't know if this is the right thing.
-MK_FN(user_trampoline_ret)
+user_trampoline_ret:
     @ put your code here.
 
     bx lr
